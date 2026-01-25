@@ -1,0 +1,670 @@
+# Protocol OMNI v15.0 - Docker Compose Stack
+#
+# VRAM BUDGET (CRITICAL):
+#   GPU0 (96GB): 90GB allocated to DeepSeek = 100% utilized
+#   GPU1 (32GB): 30GB allocated to DeepSeek = 90% utilized
+#   NO VRAM AVAILABLE for additional models
+#
+# DEPLOYMENT RULES:
+#   - DeepSeek-V3.2: Always runs, consumes all GPU memory
+#   - GLM-4.7: CPU-ONLY mode (profile: cpu-executor)
+#   - MiniMax: COLD STORAGE (profile: emergency), replicas=0
+#   - Kimi K2: External API only (profile: full)
+#
+# SAFE START:   docker compose up -d (minimal stack)
+# UNSAFE:       docker compose --profile full up -d (WILL CRASH)
+#
+name: omni-sovereign-genesis
+
+networks:
+  omni-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+  # CONCRETE BUNKER DOCTRINE: Network isolation for Oracle
+  # DeepSeek runs on internal_brain with no direct outbound access
+  # All external calls routed through MCP proxy only
+  internal_brain:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/16
+
+services:
+  # DeepSeek-V3.2 671B (Q3_K_M) - Primary Oracle
+  # Uses legacy image (docker commit) with CUDA VMM ENABLED for optimal performance
+  # GPU allocation: 19 layers = ~118GB (91GB Blackwell + 26GB 5090) = 93%/81% util
+  #
+  # WARNING: Do NOT rebuild with GGML_CUDA_NO_VMM=ON - causes 3x performance regression!
+  # The Dockerfile.blackwell disables VMM to fix build errors, but kills split-GPU perf.
+  # Legacy image: 10.75 tok/s | Rebuilt image: 3.68 tok/s
+  deepseek-v32:
+    image: omni/llama-server:sm120-cuda13
+    container_name: deepseek-v32
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # GPU ORDER CRITICAL: Blackwell (96GB) MUST be first for tensor-split 75,25
+      # Numeric indices "0,1" don't respect nvidia-smi ordering; use UUIDs
+      CUDA_VISIBLE_DEVICES: "GPU-f4f210c1-5a52-7267-979e-fe922961190a,GPU-bfbb9aa1-3d36-b47b-988f-5752cfc54601"
+      # Hot-Warm Optimization (v16.2.5): Persist CUDA kernel cache to NVMe
+      CUDA_CACHE_PATH: "/root/.nv"
+      CUDA_FORCE_P2P_ENABLE: "1"
+    volumes:
+      - /nvme/models:/models:ro
+      - ../prompts:/prompts:ro
+      - /nvme/cuda_cache:/root/.nv
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$$LD_LIBRARY_PATH
+        # Fallback for legacy images without /usr/local/bin/llama-server
+        LLAMA_BIN=$$(command -v llama-server 2>/dev/null || echo "/opt/llama.cpp/build/bin/llama-server")
+        exec $$LLAMA_BIN \
+          --model /models/deepseek-v3.2-dq3/Q3_K_M/DeepSeek-V3-0324-Q3_K_M-00001-of-00007.gguf \
+          --host 0.0.0.0 \
+          --port 8000 \
+          --n-gpu-layers 19 \
+          --ctx-size 8192 \
+          --tensor-split 75,25 \
+          -to 0
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 600s
+    networks:
+      - omni-network
+      - internal_brain
+
+  # REMOVED v16.3.3: deepseek-mxfp4 sidecar
+  # Reason: DeepSeek-V3.2-Exp uses 'deepseek3_2' architecture not supported by llama.cpp
+  # See: docs/architecture/lessons-learned.md#f-008
+  # Re-evaluate when upstream adds sparse attention primitives (Issue #16331)
+
+  kimi-k2:
+    image: omni/vllm-blackwell:v14
+    container_name: kimi-k2-oracle
+    restart: unless-stopped
+    profiles: ["full"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    environment:
+      VLLM_QUANTIZATION: "awq-int4"
+      VLLM_MAX_MODEL_LEN: "262144"
+      CUDA_VISIBLE_DEVICES: "1"
+    volumes:
+      - /nvme/models:/models:ro
+    command: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model /models/kimi-k2-thinking-int4
+      --quantization awq
+      --trust-remote-code
+      --max-model-len 262144
+      --gpu-memory-utilization 0.65
+      --port 8001
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - omni-network
+
+  # CPU-ONLY EXECUTOR - Qwen2.5-Coder-7B on Threadripper
+  # CONCRETE BUNKER DOCTRINE: DeepSeek monopolizes all VRAM, use free 340GB RAM
+  # Threadripper PRO 9995WX: 192 threads, AVX-512 for fast CPU inference
+  # BENCHMARK: 16.39 tok/s generation, 172 tok/s prompt eval (Q4_K_M, 6.4GB RAM)
+  qwen-executor:
+    image: omni/llama-server:sm120-cuda13
+    container_name: qwen-executor
+    restart: unless-stopped
+    profiles: ["cpu-executor"]
+    environment:
+      CUDA_VISIBLE_DEVICES: ""
+    volumes:
+      - /nvme/models:/models:ro
+      - ../prompts:/prompts:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        LLAMA_BIN=$$(command -v llama-server 2>/dev/null || echo "/opt/llama.cpp/build/bin/llama-server")
+        exec $$LLAMA_BIN \
+          --model /models/qwen2.5-coder-7b/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf \
+          --host 0.0.0.0 \
+          --port 8002 \
+          --threads 192 \
+          --n-gpu-layers 0 \
+          --ctx-size 16384 \
+          --batch-size 512
+    ports:
+      - "8002:8002"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - omni-network
+
+  # COLD STORAGE - DO NOT START WHILE DEEPSEEK IS RUNNING
+  # MiniMax will exhaust remaining VRAM and crash KTransformers
+  # Only use for emergency failover when DeepSeek is DOWN
+  minimax-failsafe:
+    image: omni/vllm-blackwell:v14
+    container_name: minimax-failsafe
+    restart: unless-stopped
+    profiles: ["emergency"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    environment:
+      VLLM_TENSOR_PARALLEL_SIZE: "1"
+    volumes:
+      - /nvme/models:/models:ro
+    command: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model /models/minimax-m2.1
+      --gpu-memory-utilization 0.3
+      --max-model-len 32768
+      --port 8003
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - omni-network
+
+  metacognition:
+    image: omni/metacognition:v14
+    container_name: metacognition
+    restart: unless-stopped
+    build:
+      context: ../src/metacognition
+      dockerfile: Dockerfile
+    environment:
+      LETTA_ENDPOINT: "http://letta:8283"
+      MEMGRAPH_ENDPOINT: "bolt://memgraph:7687"
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      CONFIDENCE_THRESHOLD: "0.85"
+    ports:
+      - "8011:8011"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+    depends_on:
+      - letta
+      - memgraph
+
+  gepa-engine:
+    image: omni/gepa:v14
+    container_name: gepa-engine
+    restart: unless-stopped
+    build:
+      context: ../src/gepa
+      dockerfile: Dockerfile
+    environment:
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      # EVAL_ENDPOINT: "http://braintrust:8020"  # REMOVED v16.2.2 - using Phoenix
+      CONFIG_PATH: "/config/gepa.yaml"
+      STATE_PATH: "/state"
+    volumes:
+      - ../config/gepa.yaml:/config/gepa.yaml:ro
+      - /nvme/gepa:/state
+      - /nvme/eval/golden:/eval/golden:ro
+      - ../prompts:/prompts:ro
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  agent-orchestrator:
+    image: omni/agent-framework:v15
+    build:
+      context: ../src
+      dockerfile: agent/Dockerfile
+    container_name: agent-orchestrator
+    restart: unless-stopped
+    environment:
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      ORACLE_BACKUP: "http://kimi-k2:8001/v1"
+      EXECUTOR_ENDPOINT: "http://qwen-executor:8002/v1"
+      FAILSAFE_ENDPOINT: "http://minimax-failsafe:8003/v1"
+      GEPA_ENABLED: "true"
+      GEPA_ENDPOINT: "http://gepa-engine:8010"
+      METACOG_ENABLED: "true"
+      METACOG_ENDPOINT: "http://metacognition:8011"
+      MCP_DISCOVERY: "true"
+      MCP_CONFIG: "/config/mcp-servers.json"
+      MEM0_URL: "http://mem0:8000"
+      LOG_LEVEL: "INFO"
+      # v16.3.0: Phoenix OTEL tracing (Operation Eagle Eye)
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://arize-phoenix:4317"
+      OTEL_SERVICE_NAME: "omni-agent"
+    volumes:
+      - ../prompts:/prompts:ro
+      - /nvme/eval:/eval:ro
+      - ~/.verdent/mcp.json:/config/mcp-servers.json:ro
+      - /nvme/agent/state:/state
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+    depends_on:
+      - deepseek-v32
+      - metacognition
+      - gepa-engine
+
+  letta:
+    image: letta/letta:0.16.3
+    container_name: letta
+    restart: unless-stopped
+    environment:
+      LETTA_SERVER_HOST: "0.0.0.0"
+      LETTA_SERVER_PORT: "8283"
+      LETTA_LLM_ENDPOINT: "http://deepseek-v32:8000/v1"
+      LETTA_EMBEDDING_ENDPOINT: "http://qdrant:6333"
+      RETRIEVAL_PROMPT_PATH: "/prompts/letta-retrieval.txt"
+    volumes:
+      - /nvme/letta:/root/.letta
+      - ../prompts:/prompts:ro
+    ports:
+      - "8283:8283"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8283/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  memgraph:
+    image: memgraph/memgraph:3.7.2
+    container_name: memgraph
+    restart: unless-stopped
+    volumes:
+      - /nvme/memgraph/data:/var/lib/memgraph
+      - /nvme/memgraph/log:/var/log/memgraph
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+    environment:
+      MEMGRAPH_USER: "memgraph"
+      GLIBC_TUNABLES: "glibc.cpu.hwcaps=-AVX512F,-AVX512VL,-AVX512BW,-AVX512CD,-AVX512DQ"
+    command: ["--log-level=WARNING", "--memory-limit=16000"]
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole --host localhost --port 7687 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  qdrant:
+    image: qdrant/qdrant:v1.16.0
+    container_name: qdrant
+    restart: unless-stopped
+    volumes:
+      - /nvme/qdrant/storage:/qdrant/storage
+      - /nvme/qdrant/snapshots:/qdrant/snapshots
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: "6334"
+      QDRANT__LOG_LEVEL: "INFO"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  prometheus:
+    image: prom/prometheus:v3.5.1
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /nvme/prometheus:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  # MCP Security Proxy - Default Deny Gateway
+  # Protocol OMNI v15.1 - Concrete Bunker Doctrine
+  # All MCP tool invocations route through this gateway for audit + rate limiting
+  mcp-proxy:
+    build:
+      context: ../src/mcp_proxy
+      dockerfile: Dockerfile
+    container_name: mcp-proxy
+    restart: unless-stopped
+    environment:
+      ALLOWLIST_PATH: /config/mcp-allowlist.yaml
+      LOG_LEVEL: INFO
+    volumes:
+      - ../config/mcp-allowlist.yaml:/config/mcp-allowlist.yaml:ro
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+      - internal_brain
+
+  grafana:
+    image: grafana/grafana:12.4.0
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - /nvme/grafana:/var/lib/grafana
+      - ./dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD env var}"
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.4.2-4.7.1-ubuntu22.04
+    container_name: dcgm-exporter
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      DCGM_EXPORTER_LISTEN: ":9400"
+      DCGM_EXPORTER_KUBERNETES: "false"
+    ports:
+      - "9400:9400"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - omni-network
+
+  node-exporter:
+    image: prom/node-exporter:v1.10.2
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    networks:
+      - omni-network
+
+  # REMOVED v16.2.2 - braintrust replaced by Arize Phoenix for observability
+  # braintrust:
+  #   image: omni/braintrust:latest
+  #   container_name: braintrust
+  #   restart: unless-stopped
+  #   environment:
+  #     BRAINTRUST_API_KEY: "${BRAINTRUST_API_KEY}"
+  #     GOLDEN_DATASET: "/eval/golden"
+  #     PORT: "8020"
+  #   volumes:
+  #     - /nvme/eval:/eval:ro
+  #     - /nvme/braintrust:/data
+  #   ports:
+  #     - "8020:8020"
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8020/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   networks:
+  #     - omni-network
+
+  # =============================================================================
+  # PHASE 3: Deep Observability (LIVE)
+  # =============================================================================
+
+  # Arize Phoenix - AI Observability Platform
+  # Protocol OMNI v15.1 - Phase 3 Deep Observability
+  arize-phoenix:
+    image: arizephoenix/phoenix:version-12.31.2
+    container_name: arize-phoenix
+    restart: unless-stopped
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    volumes:
+      - /nvme/phoenix-data:/data
+    environment:
+      PHOENIX_WORKING_DIR: /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  # =============================================================================
+  # PHASE 4: SOVEREIGN COGNITION (v16.2)
+  # =============================================================================
+
+  # Mem0 - Persistent Memory Layer
+  # v16.2: Built from pip (official image lacks linux/amd64)
+  # Persistence: /nvme/mem0_data mounted for durable memory storage
+  mem0:
+    build:
+      context: .
+      dockerfile: Dockerfile.mem0
+    image: omni/mem0-server:v16.2
+    container_name: mem0
+    restart: unless-stopped
+    ports:
+      - "8050:8000"
+    volumes:
+      - /nvme/mem0_data:/data
+    environment:
+      QDRANT_HOST: "qdrant"
+      QDRANT_PORT: "6333"
+      LLM_BASE_URL: "http://deepseek-v32:8000/v1"
+      LLM_API_KEY: "sk-local"
+      LLM_MODEL: "deepseek-v3.2"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - omni-network
+      - internal_brain
+    depends_on:
+      - qdrant
+      - deepseek-v32
+
+  # TensorRT-LLM Sandbox - NVFP4 Evaluation (Phase 4.1)
+  # Profile: trt-sandbox (isolated, not default)
+  # GO/NO-GO: ≥15 tok/s stable → Promote to production
+  trt-sandbox:
+    image: omni/trt-sandbox:sm120
+    container_name: trt-sandbox
+    restart: unless-stopped
+    profiles: ["trt-sandbox"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.trt-sandbox
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: "0,1"
+      MODEL_PATH: "/models/deepseek-v32-nvfp4"
+      ENGINE_PATH: "/engines/deepseek-v32"
+      TP_SIZE: "2"
+      PP_SIZE: "1"
+      MAX_BATCH_SIZE: "4"
+      MAX_INPUT_LEN: "8192"
+      MAX_OUTPUT_LEN: "2048"
+    volumes:
+      - /nvme/models:/models:ro
+      - /nvme/trt-engines:/engines
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 1800s
+    networks:
+      - internal_brain
+
+  # =============================================================================
+  # OPERATION LAZARUS: KTransformers Resurrection Sandbox
+  # =============================================================================
+
+  # KTransformers Lazarus - PyTorch 2.8+ Nightly with SM_120 Support
+  # Profile: lazarus (isolated sandbox, not default)
+  # Purpose: Validate PyTorch nightly sm_120 support for Blackwell GPUs
+  # GO/NO-GO: sm_120 in arch_list + KTransformers builds → Phase 2 integration
+  ktransformers-lazarus:
+    build:
+      context: .
+      dockerfile: Dockerfile.ktransformers-lazarus
+    image: omni/ktransformers-lazarus:nightly
+    container_name: ktransformers-lazarus
+    restart: "no"
+    profiles: ["lazarus"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: "GPU-f4f210c1-5a52-7267-979e-fe922961190a,GPU-bfbb9aa1-3d36-b47b-988f-5752cfc54601"
+    volumes:
+      - /nvme/models:/models:ro
+    ports:
+      - "8004:8000"
+    networks:
+      - internal_brain
+
+  # Health monitoring sidecar (renamed from phoenix to avoid confusion)
+  health-sidecar:
+    image: alpine:3.21
+    container_name: health-sidecar
+    restart: "no"
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /nvme/phoenix:/state
+      - ./omni-stack.yaml:/state/omni-stack.yaml:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache docker-cli curl
+        echo "Phoenix Sidecar v14.0 starting..."
+        HEALTH_FAILURES=0
+        MAX_FAILURES=3
+        while true; do
+          if [ -f /state/restart-requested ]; then
+            echo "$$(date): Phoenix: Restart signal received"
+            rm -f /state/restart-requested
+            docker exec agent-orchestrator /save-state.sh 2>/dev/null || true
+            sleep 10
+            docker compose -f /state/omni-stack.yaml up -d --force-recreate
+            HEALTH_FAILURES=0
+          fi
+          if ! docker exec agent-orchestrator curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+            HEALTH_FAILURES=$$((HEALTH_FAILURES + 1))
+            if [ $$HEALTH_FAILURES -ge $$MAX_FAILURES ]; then
+              touch /state/restart-requested
+              HEALTH_FAILURES=0
+            fi
+          else
+            HEALTH_FAILURES=0
+          fi
+          sleep 5
+        done
+    networks:
+      - omni-network
+    depends_on:
+      - agent-orchestrator

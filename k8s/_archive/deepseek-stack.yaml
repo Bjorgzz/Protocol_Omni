@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepseek-v3
+  namespace: ai-workloads
+  labels:
+    app: deepseek-v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deepseek-v3
+  template:
+    metadata:
+      labels:
+        app: deepseek-v3
+    spec:
+      runtimeClassName: nvidia
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: deepseek-v3
+        image: vllm/vllm-openai:latest
+        command: ["vllm", "serve", "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"]
+        args:
+          - "--tensor-parallel-size"
+          - "1"
+          - "--gpu-memory-utilization"
+          - "0.95"
+          - "--port"
+          - "8000"
+          - "--trust-remote-code"
+          - "--max-model-len"
+          - "32768"
+          - "--quantization"
+          - "fp8"
+        env:
+          - name: HUGGING_FACE_HUB_TOKEN
+            value: ""
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: "GPU-f4f210c1-5a52-7267-979e-fe922961190a"
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "100Gi"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "60Gi"
+        volumeMounts:
+        - name: models
+          mountPath: /root/.cache/huggingface
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          failureThreshold: 30
+      volumes:
+      - name: models
+        hostPath:
+          path: /var/mnt/data/models
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deepseek-v3
+  namespace: ai-workloads
+spec:
+  selector:
+    app: deepseek-v3
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: api
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deepseek-nodeport
+  namespace: ai-workloads
+spec:
+  type: NodePort
+  selector:
+    app: deepseek-v3
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30000

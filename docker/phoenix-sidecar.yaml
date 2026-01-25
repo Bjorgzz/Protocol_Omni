@@ -1,0 +1,72 @@
+services:
+  phoenix:
+    image: alpine:latest
+    container_name: phoenix-sidecar
+    restart: "no"
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /nvme/phoenix:/state
+      - ./omni-stack.yaml:/state/omni-stack.yaml:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache docker-cli curl
+        
+        echo "Phoenix Sidecar v14.0 starting..."
+        echo "Monitoring agent health and restart signals"
+        
+        HEALTH_CHECK_INTERVAL=5
+        HEALTH_FAILURES=0
+        MAX_FAILURES=3
+        GRACE_PERIOD=10
+        
+        while true; do
+          # Check for explicit restart signal
+          if [ -f /state/restart-requested ]; then
+            echo "$(date): Phoenix: Restart signal received"
+            rm -f /state/restart-requested
+            
+            # Save agent state before restart
+            echo "$(date): Phoenix: Saving agent state..."
+            docker exec agent-orchestrator /save-state.sh 2>/dev/null || true
+            
+            # Grace period for cleanup
+            echo "$(date): Phoenix: Grace period (${GRACE_PERIOD}s)..."
+            sleep $GRACE_PERIOD
+            
+            # Recreate the stack
+            echo "$(date): Phoenix: Recreating stack..."
+            cd /state && docker compose -f omni-stack.yaml up -d --force-recreate
+            
+            echo "$(date): Phoenix: Stack recreated successfully"
+            HEALTH_FAILURES=0
+          fi
+          
+          # Passive health monitoring
+          if ! docker exec agent-orchestrator curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+            HEALTH_FAILURES=$((HEALTH_FAILURES + 1))
+            echo "$(date): Phoenix: Agent health check failed ($HEALTH_FAILURES/$MAX_FAILURES)"
+            
+            if [ $HEALTH_FAILURES -ge $MAX_FAILURES ]; then
+              echo "$(date): Phoenix: Max failures reached, triggering restart"
+              touch /state/restart-requested
+              HEALTH_FAILURES=0
+            fi
+          else
+            if [ $HEALTH_FAILURES -gt 0 ]; then
+              echo "$(date): Phoenix: Agent recovered, resetting failure count"
+            fi
+            HEALTH_FAILURES=0
+          fi
+          
+          sleep $HEALTH_CHECK_INTERVAL
+        done
+    networks:
+      - omni-network
+    depends_on:
+      - agent-orchestrator
+
+networks:
+  omni-network:
+    external: true

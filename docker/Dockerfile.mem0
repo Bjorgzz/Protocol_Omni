@@ -1,0 +1,15 @@
+# Mem0 REST Server - Built from pip (amd64)
+# Protocol OMNI v16.2: Workaround for missing linux/amd64 in official image
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir "mem0ai[all]>=1.0.0" fastapi uvicorn sentence-transformers
+
+COPY server_mem0.py /app/server.py
+
+EXPOSE 8000
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

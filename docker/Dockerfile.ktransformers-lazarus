@@ -1,0 +1,65 @@
+# KTransformers Lazarus Sandbox
+# Operation Lazarus Phase 1 - PyTorch 2.8+ Nightly with SM_120 (Blackwell) Support
+#
+# CRITICAL: This is a SANDBOX image. Do NOT promote to production until:
+#   1. sm_120 confirmed in torch.cuda.get_arch_list()
+#   2. KTransformers builds without errors
+#   3. Inference benchmark passes (target: match llama.cpp Q3_K_M baseline)
+#
+# Build: docker compose -f docker/omni-stack.yaml --profile lazarus build ktransformers-lazarus
+# Test:  docker compose -f docker/omni-stack.yaml --profile lazarus run --rm ktransformers-lazarus python3 -c "import torch; print(torch.cuda.get_arch_list())"
+
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    build-essential \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# PyTorch Nightly with CUDA 12.8 (SM_120 Blackwell support)
+# CRITICAL: Must use nightly channel - stable PyTorch 2.7 lacks sm_120
+# --no-cache-dir saves ~8GB during build
+RUN pip install --no-cache-dir --pre torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/nightly/cu128
+
+# BUILD-TIME VALIDATION: Bypassed for manual smoke test
+# Re-enable after confirming sm_120 support in PyTorch nightly
+# RUN python3 -c "\
+# import torch; \
+# archs = torch.cuda.get_arch_list(); \
+# print('Detected CUDA architectures:', archs); \
+# assert 'sm_120' in archs, f'FATAL: sm_120 not found in {archs}. PyTorch nightly does not support Blackwell yet.'"
+
+# KTransformers dependencies (pre-install for cache efficiency)
+RUN pip install --no-cache-dir \
+    transformers>=4.48.0 \
+    accelerate>=1.3.0 \
+    sentencepiece \
+    protobuf \
+    numpy \
+    safetensors \
+    huggingface_hub
+
+WORKDIR /workspace
+
+# Placeholder: KTransformers will be cloned/installed at runtime or in Phase 2
+# RUN git clone https://github.com/kvcache-ai/ktransformers.git && \
+#     cd ktransformers && pip install -e .
+
+EXPOSE 8000
+
+CMD ["python3", "-c", "import torch; print('Lazarus ready. CUDA archs:', torch.cuda.get_arch_list())"]

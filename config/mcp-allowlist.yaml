@@ -1,0 +1,108 @@
+# Protocol OMNI v15.1 - MCP Tool Allowlist
+# Default Deny: Only explicitly listed tools are permitted
+#
+# Policy: deny = all tools blocked unless listed below
+# Rate limits: count/period (sec, min, hour)
+
+version: "1.0"
+policy: deny
+
+allowed_tools:
+  # Remote execution (trusted - requires SSH credentials)
+  mcp_ssh-mcp:
+    methods:
+      - ssh_connect
+      - ssh_disconnect
+      - ssh_execute
+      - ssh_execute_script
+      - ssh_list_connections
+      - ssh_list_files
+    rate_limit: 10/min
+    audit: true
+
+  # Library documentation (read-only, safe)
+  mcp_context7:
+    methods:
+      - "*"
+    rate_limit: 30/min
+    audit: false
+
+  # GitHub - read operations only
+  mcp_github:
+    methods:
+      - search_repositories
+      - search_code
+      - search_issues
+      - search_users
+      - get_file_contents
+      - list_commits
+      - list_issues
+      - list_pull_requests
+      - get_issue
+      - get_pull_request
+      - get_pull_request_files
+      - get_pull_request_comments
+      - get_pull_request_reviews
+      - get_pull_request_status
+    rate_limit: 20/min
+    audit: true
+
+  # Redfish BMC API (hardware management)
+  mcp_redfish:
+    methods:
+      - get_resource_data
+      - list_servers
+    rate_limit: 5/min
+    audit: true
+
+  # Serena code navigation (read-only operations)
+  mcp_serena:
+    methods:
+      - list_dir
+      - find_file
+      - search_for_pattern
+      - get_symbols_overview
+      - find_symbol
+      - find_referencing_symbols
+      - list_memories
+      - read_memory
+      - get_current_config
+      - check_onboarding_performed
+      - think_about_collected_information
+      - think_about_task_adherence
+      - think_about_whether_you_are_done
+      - initial_instructions
+    rate_limit: 30/min
+    audit: false
+
+  # Browser automation (read-only)
+  mcp_agent-browser:
+    methods:
+      - browser_navigate
+      - browser_snapshot
+      - browser_get_text
+      - browser_get_url
+      - browser_get_title
+      - browser_screenshot
+      - browser_is_visible
+    rate_limit: 15/min
+    audit: true
+
+  # Chrome DevTools (read-only)
+  mcp_chrome-devtools:
+    methods:
+      - take_snapshot
+      - take_screenshot
+      - list_pages
+      - list_console_messages
+      - list_network_requests
+      - get_console_message
+      - get_network_request
+    rate_limit: 15/min
+    audit: true
+
+# Explicitly denied tools (never permit)
+denied_tools:
+  - mcp_filesystem    # Use SSH instead - filesystem MCP is too broad
+  - mcp_shell         # Direct shell access forbidden
+  - mcp_exec          # Direct execution forbidden

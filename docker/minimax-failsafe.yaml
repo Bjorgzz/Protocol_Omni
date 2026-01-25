@@ -1,0 +1,36 @@
+services:
+  minimax-failsafe:
+    image: omni/vllm-blackwell:v14
+    container_name: minimax-failsafe
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    environment:
+      VLLM_TENSOR_PARALLEL_SIZE: "1"
+    volumes:
+      - /nvme/models:/models:ro
+    command: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model /models/minimax-m2.1
+      --gpu-memory-utilization 0.3
+      --max-model-len 32768
+      --port 8003
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    external: true

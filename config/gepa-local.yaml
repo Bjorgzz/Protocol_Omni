@@ -1,0 +1,69 @@
+# GEPA Local Development Configuration
+#
+# Usage: Copy to config/gepa.yaml or set CONFIG_PATH environment variable
+#   cp config/gepa-local.yaml config/gepa.yaml
+#   # Or:
+#   CONFIG_PATH=./config/gepa-local.yaml python -m gepa
+#
+# This config uses relative paths suitable for running outside Docker.
+
+gepa:
+  evolution_frequency: "manual"  # Don't auto-run in dev
+  trajectory_sample_size: 10     # Smaller for faster iteration
+  pareto_frontier_size: 5
+  golden_dataset: "./eval/golden/"  # Local path
+  
+  targets:
+    - model: "deepseek-v32"
+      prompt_path: "./prompts/v32-system.txt"
+      objectives:
+        - accuracy
+        - latency
+        - tool_use_success
+    
+    - model: "glm-4.7"
+      prompt_path: "./prompts/glm-system.txt"
+      objectives:
+        - accuracy
+        - code_quality
+        - preserved_thinking_clarity
+    
+    - model: "kimi-k2"
+      prompt_path: "./prompts/k2-system.txt"
+      objectives:
+        - accuracy
+        - tool_orchestration
+        - context_utilization
+
+  dspy:
+    compiler: "MIPROv2"
+    optimizer: "BootstrapFewShotWithRandomSearch"
+    num_candidates: 5  # Fewer for dev
+    
+  metrics:
+    accuracy:
+      type: "exact_match"
+      weight: 0.4
+    latency:
+      type: "minimize"
+      weight: 0.2
+      threshold_ms: 10000  # More lenient for local
+    tool_use_success:
+      type: "success_rate"
+      weight: 0.2
+    code_quality:
+      type: "lint_score"
+      weight: 0.1
+    preserved_thinking_clarity:
+      type: "custom"
+      weight: 0.1
+
+  schedule:
+    trigger: "manual"  # No auto-schedule in dev
+    on_degradation:
+      enabled: false
+
+  notifications:
+    slack_webhook: ""  # Disabled for local dev
+    on_improvement: false
+    on_degradation: false

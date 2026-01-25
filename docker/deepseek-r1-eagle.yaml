@@ -1,0 +1,45 @@
+services:
+  deepseek-r1:
+    image: omni/ktransformers:v14-genesis
+    container_name: deepseek-r1-oracle
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      ENABLE_DEEPGEMM: "1"
+      SGLANG_ENABLE_JIT_DEEPGEMM: "0"
+      KTRANSFORMERS_BACKEND_GPU: "flashinfer"
+      SPECULATIVE_MODEL: "deepseek-r1-draft-1.5b"
+      SPECULATIVE_K: "5"
+      SPECULATIVE_DRAFT_TOKENS: "8"
+      CUDA_VISIBLE_DEVICES: "0,1"
+    volumes:
+      - /nvme/models:/models:ro
+      - /nvme/prompts:/prompts:ro
+    command: >
+      numactl --interleave=all python3 -m ktransformers.server.main
+      --model /models/deepseek-r1-dq3/DeepSeek-R1-DQ3_K_M.gguf
+      --gpu_split "90000,30000"
+      --speculative-model /models/deepseek-r1-draft/draft-1.5b.gguf
+      --speculative-k 5
+      --host 0.0.0.0
+      --port 8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    external: true

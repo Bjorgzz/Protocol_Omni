@@ -1,0 +1,84 @@
+# =============================================================================
+# OPERATION BLEEDING EDGE: NVIDIA Blackwell Inference Stack
+# =============================================================================
+# Target: RTX 6000 Blackwell (sm_100, 96GB) + RTX 5090 (sm_120, 32GB)
+# Strategy: CUDA 13.1 compiler + cu128 PyTorch wheels + Triton attention
+# Flash Attention: SKIPPED (not supported on Blackwell - GitHub #1853, #2168)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# STAGE 1: BUILDER (CUDA 13.1 + Full Toolchain)
+# -----------------------------------------------------------------------------
+FROM nvidia/cuda:13.1.0-devel-ubuntu24.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="${CUDA_HOME}/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ninja-build cmake python3.12 python3.12-venv python3.12-dev \
+    python3-pip libaio-dev libopenblas-dev build-essential curl wget \
+    libnuma-dev numactl libhwloc-dev libhwloc15 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.12 /usr/bin/python
+
+RUN pip install --ignore-installed pip setuptools wheel
+
+# PyTorch Nightly with CUDA 12.8 bindings
+RUN pip install --pre torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/nightly/cu128
+
+# Core dependencies
+RUN pip install "triton>=3.0.0" "numpy>=1.24.0" "safetensors>=0.4.0" \
+    "compressed-tensors>=0.7.0" "gguf>=0.17.0" "typer[all]>=0.9.0" \
+    "rich>=13.0.0" "pyyaml>=6.0" "httpx>=0.25.0" "packaging>=23.0" \
+    "transformers>=4.45.0" "accelerate>=0.30.0" sentencepiece protobuf
+
+# kt-kernel from PyPI (pre-built wheel - avoids CMake arch issues)
+RUN pip install kt-kernel==0.5.0.post1
+RUN python3 -c "import kt_kernel; print('kt_kernel imported successfully')"
+
+# SGLang
+RUN pip install "sglang[all]>=0.4.0" || \
+    pip install git+https://github.com/sgl-project/sglang.git
+RUN python3 -c "import sglang; print('sglang imported successfully')"
+
+# -----------------------------------------------------------------------------
+# STAGE 2: RUNTIME (Slim production image)
+# -----------------------------------------------------------------------------
+FROM nvidia/cuda:13.1.0-runtime-ubuntu24.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="${CUDA_HOME}/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+ENV PYTHONUNBUFFERED=1
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3-pip libopenblas0 libaio1t64 curl \
+    libnuma1 numactl libhwloc15 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.12 /usr/bin/python
+
+COPY --from=builder /usr/local/lib/python3.12/dist-packages /usr/local/lib/python3.12/dist-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+WORKDIR /workspace
+
+ENV HF_HOME=/models
+ENV TRANSFORMERS_CACHE=/models
+ENV HF_HUB_CACHE=/models
+
+EXPOSE 30000 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
+    CMD curl -f http://localhost:30000/health || exit 1
+
+ENTRYPOINT ["python3", "-m", "sglang.launch_server"]

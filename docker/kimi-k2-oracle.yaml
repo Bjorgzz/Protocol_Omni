@@ -1,0 +1,40 @@
+services:
+  kimi-k2:
+    image: omni/vllm-blackwell:v14
+    container_name: kimi-k2-oracle
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    environment:
+      VLLM_QUANTIZATION: "awq-int4"
+      VLLM_MAX_MODEL_LEN: "262144"
+      CUDA_VISIBLE_DEVICES: "1"
+    volumes:
+      - /nvme/models:/models:ro
+    command: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model /models/kimi-k2-thinking-int4
+      --quantization awq
+      --trust-remote-code
+      --max-model-len 262144
+      --gpu-memory-utilization 0.9
+      --port 8001
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    external: true

@@ -1,0 +1,98 @@
+# Protocol OMNI v16.2.2 - Cognitive Trinity Configuration
+#
+# This file formally defines the three-model cognitive architecture.
+# Agent Orchestrator routes requests based on complexity classification.
+
+version: "1.0"
+phase: "Phase 3 - Agent Orchestration"
+
+cognitive_trinity:
+  # SYSTEM 2 - Slow, deliberate reasoning (671B MoE)
+  oracle:
+    name: deepseek-v3.2
+    endpoint: http://deepseek-v32:8000/v1
+    port: 8000
+    role: "Complex reasoning, multi-step planning, tool orchestration"
+    speed: low
+    intelligence: high
+    quantization: Q3_K_M
+    context_size: 8192
+    timeout_seconds: 300
+    complexity_levels:
+      - COMPLEX
+      - TOOL_HEAVY
+    sovereign_keywords:
+      - ssh
+      - root
+      - kernel
+      - admin
+      - system
+      - deploy
+      - trace
+      - audit
+      - calculate
+      - math
+      - physics
+      - efficiency
+      - ratio
+      - power
+      - voltage
+      - watt
+      - gpu
+      - vram
+      - blackwell
+      - "5090"
+      - nvidia
+      - check
+      - monitor
+      - connect
+      - execute
+
+  # SYSTEM 1 - Fast, intuitive execution (7B)
+  executor:
+    name: qwen2.5-coder-7b
+    endpoint: http://qwen-executor:8002/v1
+    port: 8002
+    role: "Routine coding tasks, quick responses, code generation"
+    speed: high
+    intelligence: moderate
+    quantization: Q4_K_M
+    context_size: 16384
+    timeout_seconds: 60
+    complexity_levels:
+      - TRIVIAL
+      - ROUTINE
+    benchmark:
+      generation: 16.39
+      prompt_eval: 172.0
+      unit: tok/s
+
+  # OBSERVER - Trace collection and evaluation
+  observer:
+    name: arize-phoenix
+    endpoint: http://arize-phoenix:6006
+    port: 6006
+    role: "AI Observability, OTEL trace collection, evaluation"
+    otel_port: 4317
+    features:
+      - trace_collection
+      - span_analysis
+      - latency_monitoring
+      - model_evaluation
+
+routing:
+  default_model: executor
+  fallback_model: oracle
+  complexity_estimation: automatic
+  streaming_mandate: true
+
+mcp_proxy:
+  endpoint: http://mcp-proxy:8070
+  port: 8070
+  policy: deny
+  allowlist: /config/mcp-allowlist.yaml
+
+memory:
+  mem0_endpoint: http://mem0:8050
+  qdrant_endpoint: http://qdrant:6333
+  memgraph_endpoint: bolt://memgraph:7687

@@ -1,0 +1,79 @@
+# GEPA Configuration
+# 
+# Path Resolution:
+#   Container: Paths like /prompts, /eval/golden are container mount points
+#   Local Dev: Use config/gepa-local.yaml with relative paths
+#
+# Environment Variables (from docker-compose):
+#   ORACLE_ENDPOINT  - LLM endpoint (default: http://deepseek-v32:8000/v1)
+#   EVAL_ENDPOINT    - Braintrust eval endpoint
+#   CONFIG_PATH      - Path to this config file
+#   STATE_PATH       - Path to persistent state directory
+#
+# Local Development:
+#   cp config/gepa-local.yaml config/gepa.yaml  # Use local paths
+#   # Or set paths via environment before running
+
+gepa:
+  evolution_frequency: "daily"
+  trajectory_sample_size: 100
+  pareto_frontier_size: 10
+  golden_dataset: "/eval/golden/"
+  
+  targets:
+    - model: "deepseek-v32"
+      prompt_path: "/prompts/v32-system.txt"
+      objectives:
+        - accuracy
+        - latency
+        - tool_use_success
+    
+    - model: "glm-4.7"
+      prompt_path: "/prompts/glm-system.txt"
+      objectives:
+        - accuracy
+        - code_quality
+        - preserved_thinking_clarity
+    
+    - model: "kimi-k2"
+      prompt_path: "/prompts/k2-system.txt"
+      objectives:
+        - accuracy
+        - tool_orchestration
+        - context_utilization
+
+  dspy:
+    compiler: "MIPROv2"
+    optimizer: "BootstrapFewShotWithRandomSearch"
+    num_candidates: 10
+    
+  metrics:
+    accuracy:
+      type: "exact_match"
+      weight: 0.4
+    latency:
+      type: "minimize"
+      weight: 0.2
+      threshold_ms: 5000
+    tool_use_success:
+      type: "success_rate"
+      weight: 0.2
+    code_quality:
+      type: "lint_score"
+      weight: 0.1
+    preserved_thinking_clarity:
+      type: "custom"
+      weight: 0.1
+
+  schedule:
+    trigger: "cron"
+    cron: "0 2 * * *"
+    on_degradation:
+      enabled: true
+      threshold: 0.05
+      window_hours: 24
+
+  notifications:
+    slack_webhook: "${SLACK_WEBHOOK_URL}"
+    on_improvement: true
+    on_degradation: true
