@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.3.4)
+# Protocol OMNI (v16.3.5)
 
-> **Last Updated**: 2026-01-25 | **Phase**: 4.5 Complete | **Status**: Lazarus Viable
+> **Last Updated**: 2026-01-25 | **Phase**: 4.5 Complete | **Status**: Lazarus Ready
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,10 +10,10 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | 4.5 Complete (Lazarus Viable) |
-| **Version** | v16.3.4 |
-| **Active Op** | Lazarus SUCCESS - sm_120 Verified |
-| **Critical Alerts** | ROOT DISK 99% (P1 Cleanup Required); Docker migrated to /nvme; MXFP4 blocked (F-008) |
+| **Phase** | 4.5 Complete (Lazarus Ready) |
+| **Version** | v16.3.5 |
+| **Active Op** | Lazarus Ready for Launch; Dashboard Live |
+| **Critical Alerts** | Docker on /nvme (3.6TB); Root Disk Optimized (66GB free); MXFP4 blocked (F-008) |
 
 ---
 
