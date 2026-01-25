@@ -1,0 +1,50 @@
+# ByteRover local storage
+.brv/
+*.db-wal
+*.db-shm
+
+# SSH keys (NEVER commit)
+id_ed25519
+id_ed25519.pub
+*.pem
+
+# Large binary documents
+*.docx
+
+# Obsolete Talos/K8s configs
+kubeconfig
+talosconfig
+_out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Environment
+.env
+.env.local
+*.local
+
+# Node (if any)
+node_modules/
+*.iso
+*.iso
+*.iso

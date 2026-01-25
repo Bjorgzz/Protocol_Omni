@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sysadmin-logistics
+  namespace: ai-workloads
+spec:
+  restartPolicy: Never
+  nodeName: talos-u8k-rze
+  containers:
+  - name: admin
+    image: ubuntu:24.04
+    securityContext:
+      privileged: true
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        set -ex
+        export PATH="/root/.local/bin:$PATH"
+        
+        apt-get update && apt-get install -y python3-pip wget git xfsprogs curl numactl parted
+        pip install --break-system-packages huggingface_hub[cli]
+        
+        echo ">> SEARCHING FOR 4TB NVME..."
+        lsblk
+        
+        # SAFETY INTERLOCK: Find the 4TB disk
+        TARGET_DISK=$(lsblk -bdn -o NAME,SIZE -p | awk '$2 > 3500000000000 {print $1}' | head -n 1)
+
+        if [ -z "$TARGET_DISK" ]; then
+            echo "!!!! CRITICAL ABORT: 4TB NVME NOT FOUND."
+            lsblk
+            exit 1
+        fi
+
+        echo ">> TARGET DISK: $TARGET_DISK"
+        
+        # Check if it's partitioned
+        PARTITION="${TARGET_DISK}p1"
+        if [ -e "$PARTITION" ]; then
+            echo ">> FOUND PARTITION: $PARTITION"
+            TARGET_PART="$PARTITION"
+        else
+            echo ">> NO PARTITION TABLE, CREATING..."
+            parted -s $TARGET_DISK mklabel gpt
+            parted -s $TARGET_DISK mkpart primary xfs 0% 100%
+            sleep 2
+            TARGET_PART="${TARGET_DISK}p1"
+        fi
+        
+        # Format if no filesystem
+        if ! blkid $TARGET_PART | grep -q "TYPE="; then
+            echo ">> FORMATTING $TARGET_PART as XFS..."
+            mkfs.xfs -f $TARGET_PART
+        fi
+        
+        mkdir -p /nvme
+        mount $TARGET_PART /nvme
+        
+        df -h /nvme
+        echo ">> NVMe mounted successfully!"
+        
+        echo ">> STARTING DOWNLOAD OF DEEPSEEK-V3 (Q4_K_M) - ~385GB..."
+        mkdir -p /nvme/models/deepseek-v3-gguf
+        
+        # Create symlink to hostPath for bidirectional access
+        ln -sf /nvme/models /data/models
+        
+        /root/.local/bin/huggingface-cli download unsloth/DeepSeek-V3-GGUF \
+          --include "*Q4_K_M*" \
+          --local-dir /nvme/models/deepseek-v3-gguf \
+          --local-dir-use-symlinks False
+          
+        echo ">> DOWNLOAD COMPLETE. READY FOR LEVIATHAN."
+        ls -lah /nvme/models/deepseek-v3-gguf/
+        sleep infinity
+    volumeMounts:
+    - name: host-mount-point
+      mountPath: /data
+      mountPropagation: Bidirectional
+  volumes:
+  - name: host-mount-point
+    hostPath:
+      path: /var/data
+      type: DirectoryOrCreate

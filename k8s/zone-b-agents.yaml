@@ -1,0 +1,183 @@
+# Protocol OMNI v15.0 - Zone B: Agent Orchestration (gVisor Sandboxed)
+# Security-isolated agents with restricted egress to Zone A
+#
+# CRITICAL: Uses gVisor runtime for security isolation
+# Agents MUST target http://192.168.3.10:8000 (NOT localhost)
+# gVisor loopback resolves to container, not host
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agents
+  labels:
+    zone: hands
+    security: gvisor
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-orchestrator
+  namespace: agents
+  labels:
+    app: agent-orchestrator
+    zone: hands
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-orchestrator
+  template:
+    metadata:
+      labels:
+        app: agent-orchestrator
+        zone: hands
+    spec:
+      runtimeClassName: gvisor
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: agent
+        image: omni/agent-framework:v15
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: ORACLE_ENDPOINT
+          value: "http://192.168.3.10:8000/v1"
+        - name: EXECUTOR_ENDPOINT
+          value: "http://192.168.3.10:8002/v1"
+        - name: FAILSAFE_ENDPOINT
+          value: "http://192.168.3.10:8003/v1"
+        - name: MEM0_ENDPOINT
+          value: "http://192.168.3.10:8050"
+        - name: LETTA_ENDPOINT
+          value: "http://192.168.3.10:8283"
+        - name: METACOG_ENDPOINT
+          value: "http://localhost:8011"
+        - name: MCP_DISCOVERY
+          value: "true"
+        - name: LOG_LEVEL
+          value: "INFO"
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "4"
+          requests:
+            memory: "2Gi"
+            cpu: "2"
+        volumeMounts:
+        - name: prompts
+          mountPath: /prompts
+          readOnly: true
+        - name: mcp-config
+          mountPath: /config/mcp-servers.json
+          subPath: mcp-servers.json
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        - name: state
+          mountPath: /state
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+      - name: metacognition
+        image: omni/metacognition:v15
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: ORACLE_ENDPOINT
+          value: "http://192.168.3.10:8000/v1"
+        - name: LETTA_ENDPOINT
+          value: "http://192.168.3.10:8283"
+        - name: MEMGRAPH_ENDPOINT
+          value: "bolt://192.168.3.10:7687"
+        - name: CONFIDENCE_THRESHOLD
+          value: "0.85"
+        ports:
+        - containerPort: 8011
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8011
+          initialDelaySeconds: 15
+          periodSeconds: 30
+      volumes:
+      - name: prompts
+        hostPath:
+          path: /nvme/prompts
+          type: Directory
+      - name: mcp-config
+        configMap:
+          name: mcp-config
+      - name: tmp
+        emptyDir:
+          medium: Memory
+          sizeLimit: 256Mi
+      - name: state
+        emptyDir:
+          sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-orchestrator
+  namespace: agents
+spec:
+  selector:
+    app: agent-orchestrator
+  ports:
+  - name: agent
+    port: 8080
+    targetPort: 8080
+  - name: metacog
+    port: 8011
+    targetPort: 8011
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-config
+  namespace: agents
+data:
+  mcp-servers.json: |
+    {
+      "servers": [],
+      "discovery": {
+        "enabled": true,
+        "timeout_ms": 5000
+      }
+    }

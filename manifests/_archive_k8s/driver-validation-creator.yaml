@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: create-driver-validation
+  namespace: gpu-operator
+spec:
+  restartPolicy: Never
+  tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  containers:
+  - name: create-validation
+    image: busybox
+    command:
+    - sh
+    - -c
+    - |
+      mkdir -p /run/nvidia/validations
+      echo "DRIVER_ROOT=/" > /run/nvidia/validations/driver-ready
+      echo "DRIVER_VERSION=580.105.08" >> /run/nvidia/validations/driver-ready
+      echo "CUDA_VERSION=13.0" >> /run/nvidia/validations/driver-ready
+      echo "TOOLKIT_READY=true" > /run/nvidia/validations/toolkit-ready
+      echo "Validation files created:"
+      ls -la /run/nvidia/validations/
+      cat /run/nvidia/validations/driver-ready
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: run-nvidia
+      mountPath: /run/nvidia
+  volumes:
+  - name: run-nvidia
+    hostPath:
+      path: /run/nvidia
+      type: DirectoryOrCreate

@@ -1,0 +1,41 @@
+services:
+  glm-executor:
+    image: omni/ktransformers:v14-genesis
+    container_name: glm-executor
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      GLM_PRESERVED_THINKING: "1"
+      GLM_TOOL_USE_MODE: "tau2-bench"
+      ENABLE_DEEPGEMM: "1"
+      SGLANG_ENABLE_JIT_DEEPGEMM: "0"
+      KTRANSFORMERS_BACKEND_GPU: "flashinfer"
+    volumes:
+      - /nvme/models:/models:ro
+      - /nvme/prompts:/prompts:ro
+    command: >
+      python3 -m ktransformers.server.main
+      --model /models/glm-4.7-q4km/GLM-4.7-Q4_K_M.gguf
+      --gpu_split "60000,30000"
+      --host 0.0.0.0
+      --port 8002
+    ports:
+      - "8002:8002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    external: true

@@ -1,0 +1,95 @@
+# ARTIFACT: OMNI-ENGINE-HOST (Metal Build)
+# PURPOSE: Containerize pre-built llama.cpp binaries from bare metal
+# MAINTAINER: Protocol OMNI Engineering
+#
+# RATIONALE:
+#   Building llama.cpp with CUDA VMM in Docker fails due to missing libcuda.so.1
+#   at link time (Docker only has stubs). Bare metal build has real driver.
+#   
+#   This Dockerfile packages binaries built on bare metal, preserving:
+#   - CUDA VMM support (critical for multi-GPU tensor transfers)
+#   - SM120 (Blackwell/5090) kernel support
+#   - Native CPU optimizations (Threadripper 9995WX AVX-512)
+#
+# PERFORMANCE:
+#   - With VMM (this build): ~5.4 tok/s generation
+#   - Without VMM (Docker build): ~3.7 tok/s (-32% regression)
+#
+# PREREQUISITES:
+#   Run on omni-prime bare metal:
+#   ```bash
+#   cd ~/llama_build
+#   git clone https://github.com/ggerganov/llama.cpp.git . 
+#   cmake -B build \
+#     -DGGML_CUDA=ON \
+#     -DCMAKE_CUDA_ARCHITECTURES=120 \
+#     -DGGML_NATIVE=ON \
+#     -DGGML_AVX512=ON \
+#     -DCMAKE_BUILD_TYPE=Release \
+#     -DLLAMA_BUILD_SERVER=ON
+#   cmake --build build --config Release -j $(nproc)
+#   ```
+#
+# BUILD (run on omni-prime):
+#   cd ~/Protocol_Omni
+#   docker build -f docker/Dockerfile.host \
+#     --build-arg LLAMA_BUILD_DIR=/home/omni/llama_build/build \
+#     -t omni/llama-server:sm120-vmm .
+#
+# DEPLOY:
+#   docker tag omni/llama-server:sm120-vmm omni/llama-server:sm120-cuda13
+#   docker compose -f docker/omni-stack.yaml up -d deepseek-v32
+
+FROM nvidia/cuda:13.0.0-runtime-ubuntu24.04
+
+# Runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    libcurl4t64 \
+    libgomp1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directory structure
+RUN mkdir -p /opt/llama.cpp/build/bin
+
+# Build-time argument for the llama.cpp build directory
+ARG LLAMA_BUILD_DIR=/home/omni/llama_build/build
+
+# Copy binaries from host build directory
+# These are set during docker build with --build-arg
+COPY ${LLAMA_BUILD_DIR}/bin/llama-server /opt/llama.cpp/build/bin/
+COPY ${LLAMA_BUILD_DIR}/bin/llama-bench /opt/llama.cpp/build/bin/
+COPY ${LLAMA_BUILD_DIR}/bin/llama-cli /opt/llama.cpp/build/bin/
+
+# Copy shared libraries
+COPY ${LLAMA_BUILD_DIR}/bin/libggml.so.0 /usr/local/lib/
+COPY ${LLAMA_BUILD_DIR}/bin/libggml-base.so.0 /usr/local/lib/
+COPY ${LLAMA_BUILD_DIR}/bin/libggml-cpu.so.0 /usr/local/lib/
+COPY ${LLAMA_BUILD_DIR}/bin/libggml-cuda.so.0 /usr/local/lib/
+COPY ${LLAMA_BUILD_DIR}/bin/libllama.so.0 /usr/local/lib/
+
+# Create symlinks for library versioning
+RUN cd /usr/local/lib && \
+    ln -sf libggml.so.0 libggml.so && \
+    ln -sf libggml-base.so.0 libggml-base.so && \
+    ln -sf libggml-cpu.so.0 libggml-cpu.so && \
+    ln -sf libggml-cuda.so.0 libggml-cuda.so && \
+    ln -sf libllama.so.0 libllama.so
+
+# Update library cache
+RUN ldconfig
+
+# Environment setup
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+ENV PATH=/opt/llama.cpp/build/bin:$PATH
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=600s --retries=3 \
+    CMD wget -q --spider http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+# Default entrypoint
+ENTRYPOINT ["/opt/llama.cpp/build/bin/llama-server"]
+CMD ["--help"]

@@ -1,0 +1,115 @@
+# ARTIFACT: OMNI-TRT-SANDBOX
+# PURPOSE: TensorRT-LLM sandbox for DeepSeek-V3.2-NVFP4 evaluation
+# MAINTAINER: Protocol OMNI Engineering
+# STATUS: PHASE 4.1 - SANDBOX ONLY (not production)
+#
+# RATIONALE:
+#   TensorRT-LLM offers 2-3x throughput improvement over llama.cpp.
+#   NVFP4 quantization enables efficient inference on Blackwell.
+#   Consumer Blackwell (sm_120) support is community-tested, not official.
+#   This sandbox tests compatibility before production promotion.
+#
+# BUILD:
+#   docker build -f docker/Dockerfile.trt-sandbox -t omni/trt-sandbox:sm120 .
+#
+# RUN (sandbox only):
+#   docker compose -f docker/omni-stack.yaml --profile trt-sandbox up -d trt-sandbox
+#
+# GO/NO-GO CRITERIA:
+#   - GO: ≥15 tok/s, stable for 1 hour → Promote to production
+#   - NO-GO: <15 tok/s OR unstable → Keep llama.cpp
+
+# =============================================================================
+# STAGE 1: BASE FROM NVIDIA TensorRT-LLM
+# =============================================================================
+FROM nvcr.io/nvidia/tensorrt-llm:v0.17.0-release AS base
+
+WORKDIR /app
+
+# Install additional dependencies for DeepSeek MoE support
+RUN pip install --no-cache-dir \
+    transformers>=4.45.0 \
+    huggingface-hub>=0.25.0 \
+    safetensors \
+    flash-attn \
+    && rm -rf /root/.cache/pip
+
+# =============================================================================
+# STAGE 2: BUILD ENGINES
+# =============================================================================
+# Note: Engine building happens at container startup, not build time,
+# because it requires GPU access and the specific model weights.
+# This keeps the image portable.
+
+# Copy the entrypoint script
+COPY <<'EOF' /app/entrypoint.sh
+#!/bin/bash
+set -e
+
+MODEL_PATH="${MODEL_PATH:-/models/deepseek-v32-nvfp4}"
+ENGINE_PATH="${ENGINE_PATH:-/engines/deepseek-v32}"
+TP_SIZE="${TP_SIZE:-2}"
+PP_SIZE="${PP_SIZE:-1}"
+MAX_BATCH_SIZE="${MAX_BATCH_SIZE:-4}"
+MAX_INPUT_LEN="${MAX_INPUT_LEN:-8192}"
+MAX_OUTPUT_LEN="${MAX_OUTPUT_LEN:-2048}"
+
+echo "=== TensorRT-LLM Sandbox for DeepSeek-V3.2 ==="
+echo "Model: ${MODEL_PATH}"
+echo "Engine: ${ENGINE_PATH}"
+echo "TP: ${TP_SIZE}, PP: ${PP_SIZE}"
+echo "Max Batch: ${MAX_BATCH_SIZE}, Max Input: ${MAX_INPUT_LEN}"
+
+# Check if engines exist
+if [ ! -d "${ENGINE_PATH}" ] || [ -z "$(ls -A ${ENGINE_PATH} 2>/dev/null)" ]; then
+    echo "Building TensorRT-LLM engines (this may take 30-60 minutes)..."
+    
+    # Convert checkpoint to TRT-LLM format
+    python3 -m tensorrt_llm.commands.build \
+        --checkpoint_dir "${MODEL_PATH}" \
+        --output_dir "${ENGINE_PATH}" \
+        --gemm_plugin float16 \
+        --gpt_attention_plugin float16 \
+        --tp_size "${TP_SIZE}" \
+        --pp_size "${PP_SIZE}" \
+        --max_batch_size "${MAX_BATCH_SIZE}" \
+        --max_input_len "${MAX_INPUT_LEN}" \
+        --max_output_len "${MAX_OUTPUT_LEN}" \
+        --use_custom_all_reduce \
+        --workers 2
+    
+    echo "Engine build complete."
+else
+    echo "Using pre-built engines from ${ENGINE_PATH}"
+fi
+
+# Start the inference server
+echo "Starting TensorRT-LLM server on port 8001..."
+exec python3 -m tensorrt_llm.commands.serve \
+    --engine_dir "${ENGINE_PATH}" \
+    --tokenizer_dir "${MODEL_PATH}" \
+    --host 0.0.0.0 \
+    --port 8001 \
+    --max_beam_width 1 \
+    --tp_size "${TP_SIZE}" \
+    --pp_size "${PP_SIZE}"
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=1800s --retries=3 \
+    CMD curl -sf http://localhost:8001/health || exit 1
+
+EXPOSE 8001
+
+# Environment defaults
+ENV MODEL_PATH=/models/deepseek-v32-nvfp4
+ENV ENGINE_PATH=/engines/deepseek-v32
+ENV TP_SIZE=2
+ENV PP_SIZE=1
+ENV MAX_BATCH_SIZE=4
+ENV MAX_INPUT_LEN=8192
+ENV MAX_OUTPUT_LEN=2048
+
+ENTRYPOINT ["/app/entrypoint.sh"]

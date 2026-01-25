@@ -1,0 +1,115 @@
+# ARTIFACT: OMNI-ENGINE-BLACKWELL
+# PURPOSE: DeepSeek-V3.2 671B inference on Blackwell (SM_120) silicon
+# MAINTAINER: Protocol OMNI Engineering
+#
+# RATIONALE:
+#   Standard CUDA images compile for sm_75/86/89 only.
+#   RTX PRO 6000 Blackwell and RTX 5090 require sm_120 kernels.
+#   This Dockerfile produces a reproducible build with explicit architecture targeting.
+#
+# BUILD:
+#   docker build -f docker/Dockerfile.blackwell -t omni/llama-server:sm120-cuda13 .
+#
+# PORTABLE BUILD (disable AVX-512 for non-Threadripper CPUs):
+#   docker build -f docker/Dockerfile.blackwell --build-arg GGML_AVX512=OFF -t omni/llama-server:sm120-portable .
+#
+# KEY BUILD FLAGS:
+#   GGML_CUDA_NO_VMM=ON: Disable CUDA VMM to avoid libcuda.so.1 link errors at build time
+#   --allow-shlib-undefined: Allow unresolved symbols (resolved at runtime by host driver)
+#   CPU OPTIMIZATIONS (v16.1.2):
+#   GGML_NATIVE=ON, GGML_AVX512=ON, GGML_AVX2=ON, GGML_FMA=ON, GGML_F16C=ON
+#   Enables Threadripper 9995WX (Zen5) vector extensions for CPU layer offload
+
+# =============================================================================
+# STAGE 1: BUILD
+# =============================================================================
+FROM nvidia/cuda:13.0.0-devel-ubuntu22.04 AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    cmake \
+    build-essential \
+    curl \
+    libcurl4-openssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin llama.cpp to a known-good commit for reproducibility
+ARG LLAMA_CPP_COMMIT=a864132ba546b6385922226480ee4e392aaa065c
+
+# CPU OPTIMIZATION FLAGS (default: Threadripper 9995WX Zen5 AVX-512)
+# WARNING: These defaults produce binaries that SIGILL on non-AVX512 CPUs.
+# Set to OFF for portable builds: --build-arg GGML_AVX512=OFF
+ARG GGML_NATIVE=ON
+ARG GGML_AVX512=ON
+ARG GGML_AVX2=ON
+ARG GGML_FMA=ON
+ARG GGML_F16C=ON
+RUN git clone https://github.com/ggerganov/llama.cpp.git . \
+    && git checkout ${LLAMA_CPP_COMMIT} \
+    || (echo "ERROR: Failed to checkout commit ${LLAMA_CPP_COMMIT}" && exit 1)
+
+# Create symlink for libcuda.so.1 stub
+RUN ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+
+# COMPILATION: Target SM_120 explicitly.
+# GGML_CUDA_NO_VMM=ON: Disable Virtual Memory Management (avoids cuMem* symbols at link time)
+# CPU OPTIMIZATIONS: Controlled via ARGs above (default: Threadripper 9995WX Zen5)
+ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${LIBRARY_PATH}
+RUN cmake -B build \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="120" \
+    -DGGML_CUDA_FORCE_DMMV=ON \
+    -DGGML_CUDA_NO_VMM=ON \
+    -DGGML_NATIVE=${GGML_NATIVE} \
+    -DGGML_AVX512=${GGML_AVX512} \
+    -DGGML_AVX2=${GGML_AVX2} \
+    -DGGML_FMA=${GGML_FMA} \
+    -DGGML_F16C=${GGML_F16C} \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLAMA_BUILD_EXAMPLES=OFF \
+    -DLLAMA_BUILD_TESTS=OFF \
+    -DLLAMA_BUILD_SERVER=ON \
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--allow-shlib-undefined" \
+    && cmake --build build --config Release --target llama-server -j $(nproc)
+
+# Verify the binary contains sm_120 kernels
+RUN cuobjdump build/bin/libggml-cuda.so 2>&1 | grep -q "sm_120" \
+    || (echo "ERROR: sm_120 kernels not found in binary" && exit 1)
+
+# =============================================================================
+# STAGE 2: RUNTIME
+# =============================================================================
+FROM nvidia/cuda:13.0.0-runtime-ubuntu22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    libcurl4 \
+    libgomp1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the compiled binaries (all required shared libraries)
+COPY --from=builder /build/build/bin/llama-server /usr/local/bin/
+COPY --from=builder /build/build/bin/libggml.so /usr/local/lib/
+COPY --from=builder /build/build/bin/libggml-base.so /usr/local/lib/
+COPY --from=builder /build/build/bin/libggml-cpu.so /usr/local/lib/
+COPY --from=builder /build/build/bin/libggml-cuda.so /usr/local/lib/
+COPY --from=builder /build/build/bin/libllama.so /usr/local/lib/
+COPY --from=builder /build/build/bin/libmtmd.so /usr/local/lib/
+
+# Update library cache
+RUN ldconfig
+
+# Driver Compatibility: Prepend host driver path
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=600s --retries=3 \
+    CMD wget -q --spider http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+ENTRYPOINT ["llama-server"]
+CMD ["--help"]

@@ -1,0 +1,88 @@
+services:
+  agent-orchestrator:
+    image: omni/agent-framework:v14
+    container_name: agent-orchestrator
+    restart: unless-stopped
+    depends_on:
+      - deepseek-v32
+      - glm-executor
+      - metacognition
+      - gepa-engine
+    environment:
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      ORACLE_BACKUP: "http://kimi-k2:8001/v1"
+      EXECUTOR_ENDPOINT: "http://glm-executor:8002/v1"
+      FAILSAFE_ENDPOINT: "http://minimax-failsafe:8003/v1"
+      GEPA_ENABLED: "true"
+      GEPA_ENDPOINT: "http://gepa-engine:8010"
+      METACOG_ENABLED: "true"
+      METACOG_ENDPOINT: "http://metacognition:8011"
+      MCP_DISCOVERY: "true"
+      MCP_CONFIG: "/config/mcp-servers.json"
+      LOG_LEVEL: "INFO"
+    volumes:
+      - /nvme/prompts:/prompts:ro
+      - /nvme/eval:/eval:ro
+      - ~/.verdent/mcp.json:/config/mcp-servers.json:ro
+      - /nvme/agent/state:/state
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  metacognition:
+    image: omni/metacognition:v14
+    container_name: metacognition
+    restart: unless-stopped
+    build:
+      context: ../src/metacognition
+      dockerfile: Dockerfile
+    environment:
+      LETTA_ENDPOINT: "http://letta:8283"
+      MEMGRAPH_ENDPOINT: "bolt://memgraph:7687"
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      CONFIDENCE_THRESHOLD: "0.85"
+    ports:
+      - "8011:8011"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+  gepa-engine:
+    image: omni/gepa:v14
+    container_name: gepa-engine
+    restart: unless-stopped
+    build:
+      context: ../src/gepa
+      dockerfile: Dockerfile
+    environment:
+      ORACLE_ENDPOINT: "http://deepseek-v32:8000/v1"
+      EVAL_ENDPOINT: "http://braintrust:8020"
+      CONFIG_PATH: "/config/gepa.yaml"
+      STATE_PATH: "/state"
+    volumes:
+      - ../config/gepa.yaml:/config/gepa.yaml:ro
+      - /nvme/gepa:/state
+      - /nvme/eval/golden:/eval/golden:ro
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - omni-network
+
+networks:
+  omni-network:
+    external: true
