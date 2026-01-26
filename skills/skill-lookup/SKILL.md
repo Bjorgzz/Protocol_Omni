@@ -1,5 +1,5 @@
 ---
-title: Skill Lookup & Discovery
+name: skill-lookup
 description: Allows the agent to search its own capability library (~/.verdent/skills) to solve novel problems.
 ---
 
