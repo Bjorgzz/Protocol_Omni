@@ -453,6 +453,109 @@ NUMA Topology: 1 node(s) [NPS1]
 
 ---
 
+### S-009: NVMe Swap for Large Model Operations
+
+**Date**: 2026-01-26  
+**Impact**: HIGH
+
+**What Worked**: Creating 200GB swap file on NVMe for kt-kernel weight conversion operations that exceed 377GB system RAM.
+
+**Key Configuration**:
+```bash
+sudo fallocate -l 200G /nvme/swap200g
+sudo chmod 600 /nvme/swap200g
+sudo mkswap /nvme/swap200g
+sudo swapon /nvme/swap200g
+```
+
+**Verification**:
+```bash
+free -h  # Shows 200GB swap
+swapon --show  # Lists /nvme/swap200g
+```
+
+**Why It Helped**: kt-kernel FP8→BF16 conversion loaded 642GB model into memory. Without swap, OOM killed the process. With swap, it progressed (slowly) at ~2 hours per layer.
+
+**Caveat**: NVMe swap is NOT a substitute for RAM for ML workloads. Use only as emergency overflow. The bf16 conversion with swap thrashing had ETA of 49 hours.
+
+**Lesson**: For emergency large model operations, NVMe swap provides addressable memory but with severe performance penalty. Prefer pre-quantized weights over runtime conversion.
+
+---
+
+### S-010: HuggingFace Download Optimization (50+ MB/s)
+
+**Date**: 2026-01-26  
+**Impact**: MEDIUM
+
+**What Worked**: Parallel download workers for large HuggingFace models.
+
+**Key Configuration**:
+```bash
+# Method 1: Environment variable for parallel workers
+HF_HUB_DOWNLOAD_WORKERS=16 huggingface-cli download <repo> --local-dir <path>
+
+# Method 2: hf_transfer for single-file speed (NOT parallel)
+HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download <repo>
+```
+
+**Performance Results**:
+| Method | Speed | Notes |
+|--------|-------|-------|
+| Default (8 workers) | 38 MB/s | Good baseline |
+| 16 workers | 56-60 MB/s | Saturates 500Mbps |
+| hf_transfer | 12 MB/s | Single-threaded, faster per-file but slower total |
+
+**Why Parallel > hf_transfer**: For models with many shards (163 files), parallel downloads win. `hf_transfer` is a Rust-based downloader optimized for single large files with better connection handling, but it processes files sequentially. For multi-shard downloads, the parallelism of multiple workers outweighs hf_transfer's per-connection efficiency.
+
+**Lesson**: For multi-shard models (DeepSeek-R1, Llama), use `HF_HUB_DOWNLOAD_WORKERS=16`. Reserve `HF_HUB_ENABLE_HF_TRANSFER=1` for single-file downloads only.
+
+---
+
+### S-011: Container Naming Convention - Lazarus → SGLang
+
+**Date**: 2026-01-26  
+**Impact**: LOW (operational clarity)
+
+**What Happened**: During Operation Lazarus, container names evolved:
+- `ktransformers-lazarus` - Original Phase 2/3 container name
+- `ktransformers-sglang` - Current production container (renamed for clarity)
+
+**Why It Matters**: Agents from previous sessions may reference `ktransformers-lazarus`. That container no longer exists.
+
+**Current Active Containers**:
+| Container | Purpose |
+|-----------|---------|
+| `deepseek-r1` | llama.cpp production (Iron Lung) |
+| `ktransformers-sglang` | SGLang experiments, INT8 download |
+
+**Lesson**: When renaming containers mid-operation, document the rename explicitly. Future agents should search for BOTH names when reviewing history.
+
+---
+
+### S-012: System Reboot Recovery - Lazarus Phase 4.5
+
+**Date**: 2026-01-26  
+**Impact**: MEDIUM (operational continuity)
+
+**What Happened**: System rebooted during Phase 4.5 (FP8 loading attempts). Post-reboot state:
+1. llama.cpp (`deepseek-r1`) auto-started and resumed serving
+2. SGLang process died (was running in detached mode, not restart policy)
+3. 200GB NVMe swap persisted (configured in fstab)
+4. INT8 download had to be restarted manually
+
+**Recovery Actions**:
+```bash
+# Verify Iron Lung recovered
+curl http://localhost:8000/health  # {"status":"ok"}
+
+# Restart INT8 download (SGLang container was up, process was dead)
+docker exec -d ktransformers-sglang bash -c 'HF_HUB_DOWNLOAD_WORKERS=16 huggingface-cli download ...'
+```
+
+**Lesson**: For long-running downloads, use `screen` or `tmux` inside containers, or configure Docker restart policies. Detached `docker exec -d` processes don't survive container restarts.
+
+---
+
 ### S-005: NPS1 BIOS Optimization (2.1x Speedup)
 
 **Date**: 2026-01-24  
@@ -667,6 +770,7 @@ Error response from daemon: no matching manifest for linux/amd64 in the manifest
 
 | Version | Date | Change |
 |---------|------|--------|
+| v1.13 | 2026-01-26 | Added S-009: NVMe swap, S-010: HF download optimization |
 | v1.12 | 2026-01-26 | Added P-005: FP8 → Meituan INT8 pivot (RAM constraint) |
 | v1.11 | 2026-01-26 | Added F-020: FP8 RAM constraint (642GB > 377GB), F-019: kt-kernel FP8 conversion segfault |
 | v1.10 | 2026-01-26 | Added F-018: balance_serve/sched_ext blocker. Lazarus Phase 3 PARTIAL. |
