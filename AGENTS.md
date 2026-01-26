@@ -1,4 +1,4 @@
-# Protocol OMNI (v16.4.3)
+# Protocol OMNI (v16.4.4)
 
 > **Last Updated**: 2026-01-26 | **Phase**: 4.5 In Progress | **Status**: INT8 DOWNLOADING (Meituan Pre-Quant)
 
@@ -11,13 +11,37 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | 4.5 In Progress |
-| **Version** | v16.4.3 |
+| **Version** | v16.4.4 |
 | **Active Op** | Downloading `meituan/DeepSeek-R1-Block-INT8` (176 files, ~350GB) |
 | **Asset** | INT8 downloading → `/nvme/models/deepseek-r1-int8/` |
 | **Pivot** | FP8 path ABANDONED (642GB > 377GB RAM). Using Meituan pre-quantized INT8. |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
 | **Production** | llama.cpp RUNNING (Iron Lung baseline) @ port 8000 |
 | **Download** | Running in `ktransformers-sglang` container - log: `/tmp/int8_download.log` |
+
+---
+
+## Infrastructure Access
+
+| Resource | Access | Notes |
+|----------|--------|-------|
+| **Server** | `omni@100.94.47.77` (Tailscale) | Password: ask user |
+| **Local IP** | `192.168.3.10` | Only from same LAN |
+| **llama.cpp** | `http://192.168.3.10:8000` | Iron Lung API |
+| **Container** | `ktransformers-sglang` | INT8 download running here |
+| **Container** | `deepseek-r1` | llama.cpp production |
+
+**Monitor Commands:**
+```bash
+# Download progress
+ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-int8/ && ls /nvme/models/deepseek-r1-int8/*.safetensors 2>/dev/null | wc -l"
+
+# GPU status
+ssh omni@100.94.47.77 "nvidia-smi --query-gpu=memory.used,memory.total --format=csv"
+
+# Iron Lung health
+curl http://192.168.3.10:8000/health
+```
 
 ---
 
