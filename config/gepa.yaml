@@ -22,21 +22,21 @@ gepa:
   
   targets:
     - model: "deepseek-v32"
-      prompt_path: "/prompts/v32-system.txt"
+      prompt_path: "/prompts/_archive/v32-system.txt"
       objectives:
         - accuracy
         - latency
         - tool_use_success
     
     - model: "glm-4.7"
-      prompt_path: "/prompts/glm-system.txt"
+      prompt_path: "/prompts/_archive/glm-system.txt"
       objectives:
         - accuracy
         - code_quality
         - preserved_thinking_clarity
     
     - model: "kimi-k2"
-      prompt_path: "/prompts/k2-system.txt"
+      prompt_path: "/prompts/_archive/k2-system.txt"
       objectives:
         - accuracy
         - tool_orchestration
