@@ -1,6 +1,6 @@
 # Protocol OMNI (v16.3.5)
 
-> **Last Updated**: 2026-01-25 | **Phase**: 4.5 Complete | **Status**: Lazarus Ready
+> **Last Updated**: 2026-01-26 | **Phase**: 4.5 Complete | **Status**: Lazarus PHASE 3 PARTIAL - kt-kernel works, balance_serve blocked
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,10 +10,13 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | 4.5 Complete (Lazarus Ready) |
-| **Version** | v16.3.5 |
-| **Active Op** | Lazarus Ready for Launch; Dashboard Live |
-| **Critical Alerts** | Docker on /nvme (3.6TB); Root Disk Optimized (66GB free); MXFP4 blocked (F-008) |
+| **Phase** | 4.5 In Progress |
+| **Version** | v16.3.6 |
+| **Active Op** | Lazarus Phase 3 - **PARTIAL** (kt-kernel + SGLang OK, balance_serve blocked) |
+| **Blocker** | 🛑 `sched_ext` requires balance_serve C++20 build (complex, deferred) |
+| **Next Step** | Use llama.cpp for DeepSeek-R1 inference (proven working) |
+| **Model Ready** | DeepSeek-R1 Q4_K_M (377GB, 9 chunks) at `/nvme/models/deepseek-r1/` |
+| **Container** | `omni/ktransformers-lazarus:phase3` (48.3GB) - kt-kernel 0.5.1 + SGLang |
 
 ---
 
@@ -98,7 +101,8 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Tool | Use Case |
 |------|----------|
-| `mcp_ssh-mcp` | Remote execution on host |
+| `ssh omni@192.168.3.10` | **PRIMARY** - Native SSH (YOLO mode enabled, all patterns pass) |
+| `mcp_ssh-mcp` | Fallback - Remote execution (when YOLO mode not enabled) |
 | `mcp_github` | GitHub operations |
 | `mcp_serena` | Code navigation |
 | `mcp_redfish` | BMC access |

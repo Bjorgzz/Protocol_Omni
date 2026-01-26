@@ -1,13 +1,23 @@
 # KTransformers Lazarus Sandbox
-# Operation Lazarus Phase 1 - PyTorch 2.8+ Nightly with SM_120 (Blackwell) Support
+# Operation Lazarus Phase 3 - KTransformers with SM_120 (Blackwell) + SGLang
 #
-# CRITICAL: This is a SANDBOX image. Do NOT promote to production until:
-#   1. sm_120 confirmed in torch.cuda.get_arch_list()
-#   2. KTransformers builds without errors
-#   3. Inference benchmark passes (target: match llama.cpp Q3_K_M baseline)
+# STATUS: PARTIAL SUCCESS
+#   1. sm_120 confirmed in torch.cuda.get_arch_list() ✅
+#   2. kt-kernel 0.5.1 built with SM_120 ✅
+#   3. SGLang installed ✅
+#   4. balance_serve/sched_ext BLOCKED - requires C++20 build (see F-018)
 #
-# Build: docker compose -f docker/omni-stack.yaml --profile lazarus build ktransformers-lazarus
-# Test:  docker compose -f docker/omni-stack.yaml --profile lazarus run --rm ktransformers-lazarus python3 -c "import torch; print(torch.cuda.get_arch_list())"
+# Containers:
+#   phase2 (37.1GB): kt-kernel + archive package (PyTorch 2.11 nightly)
+#   phase3 (48.3GB): kt-kernel + SGLang + sqlalchemy (PyTorch 2.9.1)
+#
+# Build:
+#   docker build --no-cache -f docker/Dockerfile.ktransformers-lazarus -t omni/ktransformers-lazarus:phase3 docker/
+#
+# Run (with GPU):
+#   docker run --gpus all -v /nvme/models:/models:ro -p 8004:8000 omni/ktransformers-lazarus:phase3
+#
+# Updated: 2026-01-26 - Phase 3 PARTIAL (balance_serve blocked)
 
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
@@ -25,6 +35,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     ninja-build \
+    cmake \
+    pkg-config \
+    libhwloc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
@@ -56,10 +69,58 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /workspace
 
-# Placeholder: KTransformers will be cloned/installed at runtime or in Phase 2
-# RUN git clone https://github.com/kvcache-ai/ktransformers.git && \
-#     cd ktransformers && pip install -e .
+# KTransformers with SM_120 (Blackwell) support
+# CRITICAL: kt-kernel uses CPUINFER_CUDA_ARCHS env var for CUDA architectures
+# Default is "80;86;89;90" - we need 120 for Blackwell (sm_120)
+ENV TORCH_CUDA_ARCH_LIST="12.0"
+ENV CPUINFER_CUDA_ARCHS="120"
+ENV CPUINFER_USE_CUDA="1"
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="${CUDA_HOME}/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+# Clone KTransformers monorepo
+# CRITICAL: Full recursive clone required - shallow clone breaks submodules (F-013)
+# Submodules: pybind11, llama.cpp, custom_flashinfer (required for CMake build)
+RUN git clone --recursive https://github.com/kvcache-ai/ktransformers.git
+
+# Step 1: Install kt-kernel (CUDA inference kernels with sm_120 support)
+RUN cd /workspace/ktransformers/kt-kernel && \
+    pip install --no-cache-dir -v . 2>&1 | tee /tmp/kt-kernel-build.log || \
+    (echo "=== KT-KERNEL BUILD FAILED ===" && tail -100 /tmp/kt-kernel-build.log && exit 1)
+
+# Step 2: Copy third_party for archive's CMakeLists.txt path resolution (F-017 rev3)
+# Archive expects third_party at ../../third_party relative to csrc/ktransformers_ext
+# Symlink doesn't work - CMake doesn't follow symlinks during pip build isolation
+# Force copy: remove any placeholder, then copy the real third_party
+RUN rm -rf /workspace/ktransformers/archive/third_party && \
+    cp -r /workspace/ktransformers/third_party /workspace/ktransformers/archive/third_party
+
+# Step 3: Install main ktransformers package (model loading, server, CLI)
+# NOTE: Main package is in archive/ due to repo restructuring
+RUN cd /workspace/ktransformers/archive && \
+    pip install --no-cache-dir -e . 2>&1 | tee /tmp/ktransformers-build.log || \
+    (echo "=== KTRANSFORMERS BUILD FAILED ===" && tail -100 /tmp/ktransformers-build.log && exit 1)
+
+# Step 4: Install missing runtime dependencies for full server (Phase 3)
+# sqlalchemy: Required by ktransformers.server.models for assistant database
+# aiosqlite: Async SQLite support for FastAPI
+RUN pip install --no-cache-dir sqlalchemy aiosqlite
+
+# Step 5: Install SGLang from KTransformers fork (modern serving layer)
+# WARNING: SGLang deps will override PyTorch version (2.11 nightly → 2.9.1)
+# This breaks ABI compatibility with archive package's C++ extensions
+# For kt-kernel only usage, this is acceptable (kt-kernel is standalone)
+RUN git clone https://github.com/kvcache-ai/sglang.git /workspace/sglang && \
+    cd /workspace/sglang && \
+    pip install --no-cache-dir -e "python" 2>&1 | tee /tmp/sglang-build.log || \
+    (echo "=== SGLANG BUILD FAILED ===" && tail -100 /tmp/sglang-build.log && exit 1)
+
+# NOTE: balance_serve/sched_ext NOT built (see F-018 in lessons-learned.md)
+# Full inference via ktransformers.local_chat requires sched_ext C++20 extension
+# For now, use kt-kernel directly or SGLang for HF models
 
 EXPOSE 8000
 
-CMD ["python3", "-c", "import torch; print('Lazarus ready. CUDA archs:', torch.cuda.get_arch_list())"]
+# Entrypoint validates kt_kernel and sglang (using importlib.metadata for version)
+CMD ["python3", "-c", "import torch; print('CUDA archs:', torch.cuda.get_arch_list()); import kt_kernel; print('kt_kernel:', kt_kernel.__version__); import importlib.metadata; print('sglang:', importlib.metadata.version('sglang')); print('LAZARUS PHASE 3 READY')"]
