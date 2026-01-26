@@ -1,9 +1,9 @@
 # KTransformers FULL Resurrection Plan
 
 > **Date**: 2026-01-26  
-> **Version**: v16.3.8  
+> **Version**: v16.4.3  
 > **Author**: Sentinel Audit Deep Research  
-> **Status**: BLOCKED - GGUF FORMAT INCOMPATIBLE  
+> **Status**: PHASE 4.5 - INT8 DOWNLOAD IN PROGRESS  
 > **Priority**: P1
 
 ---
@@ -14,11 +14,14 @@
 
 **Solution**: **SGLang + kt-kernel integration** bypasses balance_serve entirely. This is the production-grade path to FULL resurrection.
 
-**NEW BLOCKER (v16.3.8)**: SGLang's GGUF loader (via transformers library) does NOT support deepseek2 architecture. kt-kernel requires BF16/FP16 safetensors as input - GGUF NOT supported for weight conversion.
+**BLOCKERS ENCOUNTERED**:
+1. **GGUF (v16.3.8)**: SGLang GGUF loader doesn't support deepseek2 → Downloaded HF weights instead
+2. **kt-kernel Conversion (v16.4.1)**: FP8→INT8 conversion segfaults at MoE expert layer 3
+3. **FP8 RAM (v16.4.2)**: 642GB FP8 weights > 377GB system RAM → Can't load even with 500GB CPU offload
 
-**Decision Required**: Download DeepSeek-R1 HuggingFace BF16 weights (689GB) or wait for GGUF support.
+**Current Path (v16.4.3)**: Downloading `meituan/DeepSeek-R1-Block-INT8` pre-quantized weights (~350GB). These fit in RAM and are optimized for SGLang.
 
-**Performance Uplift**: 2.42x-4.09x speedups over llama.cpp baseline (10.9 tok/s → 26-45 tok/s theoretical).
+**Performance Uplift**: 1.3x-2.25x speedups over llama.cpp baseline (20 tok/s measured → 26-45 tok/s theoretical).
 
 ---
 
@@ -250,8 +253,8 @@ curl http://localhost:8004/v1/completions -d '{"prompt": "Hello", "max_tokens": 
 
 | Metric | Current (llama.cpp) | Target (SGLang+kt-kernel) | Status |
 |--------|---------------------|---------------------------|--------|
-| Generation Speed | 10.9 tok/s | >26 tok/s | PENDING |
-| Prompt Eval | 20.5 tok/s | >50 tok/s | PENDING |
+| Generation Speed | 20 tok/s | >26 tok/s | PENDING |
+| Prompt Eval | ~40 tok/s | >50 tok/s | PENDING |
 | API Compatibility | OpenAI | OpenAI | SAME |
 | Model | DeepSeek-R1 Q4_K_M | DeepSeek-R1 (hybrid) | SAME |
 

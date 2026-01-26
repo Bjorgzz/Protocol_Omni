@@ -2,7 +2,7 @@
 
 > **Purpose**: Chronicle of failures, pivots, and hard-won knowledge for AI agent training  
 > **Last Updated**: 2026-01-26  
-> **Versions Covered**: v13.0 → v16.3.5
+> **Versions Covered**: v13.0 → v16.4.3
 
 This document captures architectural decisions, failed experiments, and pivots to prevent agents from repeating mistakes.
 
@@ -32,6 +32,8 @@ This document captures architectural decisions, failed experiments, and pivots t
 | kt-kernel only (F-016) | Main package in archive/ needs cmake | Install BOTH kt-kernel AND archive/ with cmake |
 | Archive third_party path (F-017) | CMake expects ../../third_party | **RESOLVED**: `rm -rf` + `cp -r` third_party into archive/ ✅ |
 | balance_serve/sched_ext (F-018) | C++20 extension required for ktransformers server | Build separately or wait for prebuilt wheel |
+| kt-kernel FP8→INT8 conversion (F-019) | Segfault at MoE layer 3 | Use pre-quantized weights (Meituan INT8) |
+| FP8 weights on 377GB RAM (F-020) | 642GB > RAM, SGLang OOM | Use pre-quantized INT8 (~350GB) |
 
 ---
 
@@ -231,7 +233,76 @@ ktransformers.local_chat
 
 ---
 
-## Success Registry
+### F-019: kt-kernel FP8→INT8 Conversion Segfault (MoE Experts)
+
+**Date**: 2026-01-26  
+**Version**: v16.4.1  
+**Severity**: BLOCKING  
+**Component**: Operation Lazarus Phase 4.5 - Weight quantization
+
+**Symptoms**:
+```
+Processing layer 3 (1/59)...
+Converting layer 3 with 256 experts via online quantization...
+bash: line 1:  1773 Segmentation fault (core dumped)
+```
+
+**Root Cause**: The `convert_cpu_weights.py` script in kt-kernel crashes when processing FP8 input weights during MoE expert conversion. The segfault occurs consistently at the same layer regardless of thread count.
+
+**What Was Attempted**:
+| Input Type | Result |
+|------------|--------|
+| `--input-type fp8` | Segfault at layer 3 |
+| `--input-type bf16` | Works but thrashes 200GB swap (ETA: 49 hours for 59 layers) |
+
+**Environment**:
+- Model: DeepSeek-R1 HF weights (642GB FP8, 163 shards)
+- Container: `ktransformers-sglang`
+- Script: `/workspace/ktransformers/kt-kernel/scripts/convert_cpu_weights.py`
+
+**Resolution**: Abandoned kt-kernel conversion path. Pivoted to downloading pre-quantized `meituan/DeepSeek-R1-Block-INT8` weights.
+
+**Lesson**: kt-kernel's FP8→INT8 conversion is unstable for 671B MoE models. For large-scale deployments, use pre-quantized weights from providers (Meituan, Unsloth) rather than attempting runtime conversion.
+
+---
+
+### F-020: FP8 RAM Constraint - Model Size Exceeds System Memory
+
+**Date**: 2026-01-26  
+**Version**: v16.4.2  
+**Severity**: BLOCKING  
+**Component**: Operation Lazarus Phase 4.5 - SGLang loading
+
+**Symptoms**:
+```
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 7.03 GiB. 
+GPU 0 has a total capacity of 94.97 GiB of which 5.74 GiB is free. 
+Including non-PyTorch memory, this process has 88.54 GiB memory in use.
+```
+
+**Root Cause**: DeepSeek-R1 FP8 weights total 642GB. System has 377GB RAM + 200GB swap = 577GB addressable, but:
+1. SGLang needs GPU memory for dense layers + KV cache
+2. CPU offload (`--cpu-offload-gb 500`) still requires GPU for MoE expert routing
+3. Even with aggressive offload, GPU OOMs during expert allocation
+
+**SGLang Attempts**:
+| Settings | Result |
+|----------|--------|
+| `--cpu-offload-gb 300` | OOM at 88.5GB GPU |
+| `--cpu-offload-gb 500 --mem-fraction-static 0.7` | OOM (same) |
+| `--enable-mixed-chunk` added | OOM (same) |
+
+**Why llama.cpp Works**: llama.cpp uses GGUF with aggressive quantization (Q4_K_M = 377GB). SGLang tries to load FP8 which is 1.7x larger.
+
+**Resolution**: Pivot to `meituan/DeepSeek-R1-Block-INT8` pre-quantized weights (~350GB).
+
+**Lesson**: For SGLang + DeepSeek 671B on consumer hardware (377GB RAM), use pre-quantized INT8 weights. FP8 HF weights are designed for multi-node clusters with 1TB+ RAM.
+
+---
+
+## Pivot Registry
+
+### P-001: KTransformers → llama.cpp (Concrete Bunker Doctrine)
 
 > Documenting what worked prevents agents from abandoning proven solutions.
 
@@ -460,6 +531,29 @@ Verification: numactl --hardware → "available: 1 nodes"
 
 ---
 
+### P-005: FP8 HF Weights → Meituan INT8 Pre-Quantized
+
+**Date**: 2026-01-26  
+**Version**: v16.4.3
+
+**Original State**: SGLang loading DeepSeek-R1 FP8 HF weights (642GB)  
+**New State**: Download `meituan/DeepSeek-R1-Block-INT8` pre-quantized (~350GB)
+
+**Trade-offs**:
+| Lost | Gained |
+|------|--------|
+| Native FP8 precision | Fits in 377GB RAM |
+| Manual control of quantization | No conversion step |
+| HF reference weights | Pre-optimized for SGLang |
+
+**Blockers That Forced Pivot**:
+1. **F-019**: kt-kernel FP8→INT8 conversion segfaults on MoE experts
+2. **F-020**: 642GB > 377GB RAM, even with 500GB CPU offload SGLang OOMs
+
+**Reason**: Pre-quantized INT8 weights are the only viable path for SGLang on consumer hardware (377GB RAM, 96GB VRAM). Conversion tools are unstable for 671B MoE models.
+
+---
+
 ## Sentinel Audit 2026-01: Engine Evaluation
 
 **Date**: 2026-01-23  
@@ -573,6 +667,8 @@ Error response from daemon: no matching manifest for linux/amd64 in the manifest
 
 | Version | Date | Change |
 |---------|------|--------|
+| v1.12 | 2026-01-26 | Added P-005: FP8 → Meituan INT8 pivot (RAM constraint) |
+| v1.11 | 2026-01-26 | Added F-020: FP8 RAM constraint (642GB > 377GB), F-019: kt-kernel FP8 conversion segfault |
 | v1.10 | 2026-01-26 | Added F-018: balance_serve/sched_ext blocker. Lazarus Phase 3 PARTIAL. |
 | v1.9 | 2026-01-26 | **F-017 RESOLVED**: Archive third_party path fixed with rm+cp. Lazarus Phase 2 BUILD SUCCESS! |
 | v1.9 | 2026-01-26 | Added S-008: KTransformers kt-kernel 0.5.1 with SM_120 (Blackwell) support confirmed |
