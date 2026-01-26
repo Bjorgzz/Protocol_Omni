@@ -2,7 +2,45 @@
 
 > Common CLI commands for Protocol OMNI
 
-## SSH Access
+## Remote Execution (Primary Method)
+
+Native SSH is enabled via Verdent's `permission.json` allowlist.
+
+**Setup (one-time on Mac):**
+```bash
+# 1. Ensure SSH key auth is configured
+ssh-copy-id omni@192.168.3.10
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+
+# 2. Create Verdent permission allowlist (CORRECT FORMAT with Bash() wrapper)
+cat > ~/.verdent/permission.json << 'EOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh omni@192.168.3.10 *)",
+      "Bash(ssh -o BatchMode=yes omni@192.168.3.10 *)",
+      "Bash(scp * omni@192.168.3.10:*)"
+    ],
+    "deny": []
+  }
+}
+EOF
+```
+
+**Usage (AI agents can run directly, full shell syntax supported):**
+```bash
+ssh -o BatchMode=yes omni@192.168.3.10 "hostname"
+ssh -o BatchMode=yes omni@192.168.3.10 "docker ps"
+ssh -o BatchMode=yes omni@192.168.3.10 "nohup docker build ... > /tmp/log 2>&1 &"
+```
+
+**Why this works:** The `Bash()` wrapper in `permissions.allow` tells Verdent to treat matched commands as fully trusted, bypassing both sandbox AND injection detection.
+
+**Fallback:** `mcp_ssh-mcp_ssh_execute` (MCP SSH tool) - for when permission.json is not configured
+
+---
+
+## SSH Access (Manual)
 
 ```bash
 # SSH to omni-prime host

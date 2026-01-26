@@ -48,3 +48,6 @@ node_modules/
 *.iso
 *.iso
 *.iso
+# SQLite WAL files (transient state)
+.brv/blobs/*.db-wal
+.brv/blobs/*.db-shm

@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.3.5)
+# Protocol OMNI (v16.3.9)
 
-> **Last Updated**: 2026-01-26 | **Phase**: 4.5 Complete | **Status**: Lazarus PHASE 3 PARTIAL - kt-kernel works, balance_serve blocked
+> **Last Updated**: 2026-01-26 | **Phase**: 4.5 In Progress | **Status**: HF DOWNLOAD ACTIVE - 147 MB/s
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -11,12 +11,15 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | 4.5 In Progress |
-| **Version** | v16.3.6 |
-| **Active Op** | Lazarus Phase 3 - **PARTIAL** (kt-kernel + SGLang OK, balance_serve blocked) |
-| **Blocker** | 🛑 `sched_ext` requires balance_serve C++20 build (complex, deferred) |
-| **Next Step** | Use llama.cpp for DeepSeek-R1 inference (proven working) |
-| **Model Ready** | DeepSeek-R1 Q4_K_M (377GB, 9 chunks) at `/nvme/models/deepseek-r1/` |
+| **Version** | v16.3.9 |
+| **Active Op** | Lazarus Resurrection - HF DOWNLOAD RUNNING |
+| **Download** | DeepSeek-R1 BF16 (1.275 TB) - 21% complete (272GB) @ 83 MB/s |
+| **Session** | `screen -r hf_dl` - ETA ~3.4 hours remaining |
+| **kt-kernel Requirement** | BF16 safetensors → INT8 conversion (after download) |
+| **Storage** | 1.8TB free on `/nvme` - sufficient for 1.275TB + 377GB GGUF |
+| **Production** | llama.cpp serving DeepSeek-R1 Q4_K_M @ 20 tok/s (Iron Lung stable) |
 | **Container** | `omni/ktransformers-lazarus:phase3` (48.3GB) - kt-kernel 0.5.1 + SGLang |
+| **Plan** | [FULL Resurrection Plan](docs/plans/2026-01-26-ktransformers-full-resurrection.md) |
 
 ---
 
@@ -24,7 +27,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Directive | Why | Reference |
 |-----------|-----|-----------|
-| **Concrete Bunker** | Use llama.cpp. KTransformers = VIABLE (sm_120 verified, PyTorch 2.11+). vLLM blocked. SGLang = re-evaluate. | [Lessons Learned](docs/architecture/lessons-learned.md) |
+| **Concrete Bunker** | llama.cpp = BASELINE (10.9 tok/s). SGLang + kt-kernel = UPGRADE PATH (26-45 tok/s). vLLM blocked. | [Full Resurrection Plan](docs/plans/2026-01-26-ktransformers-full-resurrection.md) |
 | **NPS1 BIOS** | Unified NUMA required for 671B inference (2.1x speedup). | [Tech Stack](docs/architecture/tech_stack.md) |
 | **Bare Metal Build** | Docker VMM disabled = 300% perf regression. Build on host. | [Lessons Learned](docs/architecture/lessons-learned.md#f-003) |
 | **MCP Proxy** | All tool calls via `:8070` (Default Deny policy). | [Security](docs/security/overview.md) |
@@ -130,6 +133,12 @@ graph LR
 3. **MCP Security**: All tool invocations via `:8070` proxy.
 4. **Verification**: Never assume containers are up; check with `docker compose ps`.
 5. **Read Before Suggest**: Check [Lessons Learned](docs/architecture/lessons-learned.md) before proposing infrastructure changes.
+6. **Skill Protocol**: Always invoke relevant skills before tasks. Key skills:
+   - `brainstorming` → Before any creative/feature work
+   - `systematic-debugging` → Before proposing fixes
+   - `verification-before-completion` → Before claiming "done"
+   - `memory-sync` → At session end or context limit
+   - `sentinel-audit` → For version/paradigm audits
 
 ---
 
