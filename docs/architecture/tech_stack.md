@@ -1,7 +1,7 @@
 # Protocol OMNI: Tech Stack Reference
 
-> **Last Updated**: 2026-01-25  
-> **Version**: v16.3.4
+> **Last Updated**: 2026-01-27  
+> **Version**: v16.4.12
 
 Hardware specifications, software versions, and stack decisions for Protocol OMNI infrastructure.
 
@@ -73,11 +73,12 @@ Hardware specifications, software versions, and stack decisions for Protocol OMN
 
 | Component | Version | Configuration |
 |-----------|---------|---------------|
-| llama.cpp | `557515be1` | `BLACKWELL_NATIVE_FP4=1` |
+| llama.cpp | `68ac3acb4` (b7848) | MLA optimized, `BLACKWELL_NATIVE_FP4=1` |
 | Docker Image | `omni/llama-server:sm120-cuda13` | Built via `build-metal-container.sh` |
-| GPU Layers | 19 | ~118GB (91GB Blackwell + 26GB 5090) |
+| GPU Layers | 15 | ~96GB (82GB Blackwell + 15GB 5090) |
 | Tensor Split | `75,25` | Asymmetric GPU allocation |
 | Flash Attention | Enabled | `--flash-attn` |
+| KV Cache | q4_1 quantized | `--cache-type-k q4_1` (+7.3% speedup) |
 | Context Slots | 4 @ 8192 | 32K total context |
 
 ### Models
@@ -90,13 +91,15 @@ Hardware specifications, software versions, and stack decisions for Protocol OMN
 
 ---
 
-## Stack Assessment (2026-01-25 Paradigm Audit)
+## Stack Assessment (2026-01-25 Paradigm Audit) — Historical
+
+> **Note**: This audit predates the 2026-01-27 MLA upgrade. Inference engine choice remains valid.
 
 | Layer | Choice | Alternatives Evaluated | Verdict |
 |-------|--------|------------------------|---------|
 | **Orchestration** | LangGraph v1.0.6 | CrewAI, AutoGen (deprecated), PydanticAI, Aegra | **OPTIMAL** |
 | **Inference** | llama.cpp sm_120 | vLLM, SGLang, TensorRT-LLM | **ONLY OPTION** |
-| **Memory** | Mem0 v1.0.2 | Letta/MemGPT, Zep, Cognee | **CURRENT** |
+| **Memory** | OpenMemory (CaviraOSS) | Mem0 (F-006 BLOCKED), Letta, Zep (deprecated) | **SELECTED** — local-first, SQLite |
 | **Observability** | Phoenix OTEL 0.14.0 | Langfuse, OpenLLMetry, LangSmith | **UPGRADED** |
 | **Model** | DeepSeek-V3.2 671B | GLM-4.7, Kimi K2, MiniMax-M2.1 | **#2 OPEN** |
 

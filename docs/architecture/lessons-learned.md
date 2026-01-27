@@ -19,7 +19,7 @@ This document captures architectural decisions, failed experiments, and pivots t
 | Disable CUDA VMM in Docker | 300% performance regression | Build on bare metal, package into container |
 | gVisor for GPU workloads | No GPU passthrough | Standard Docker for Zone A |
 | 4-model Cognitive Trinity | VRAM oversubscription | 2-model architecture (Oracle + Executor) |
-| Mem0 Docker deployment | No linux/amd64 image | Build from source or use OpenMemory MCP |
+| Mem0 Docker deployment | No linux/amd64 image (F-006 STILL BLOCKED) | Use OpenMemory (CaviraOSS) — local-first, SQLite |
 | httpx.AsyncClient for llama.cpp | HTTP/2 negotiation 400 errors | Sync `httpx.Client` + `asyncio.to_thread()` |
 | Undeclared LangGraph state fields | Fields silently dropped | Always declare in TypedDict schema |
 | Memgraph on Zen 5 (9995WX) | AVX512 GPF in libc | Add `GLIBC_TUNABLES=glibc.cpu.hwcaps=-AVX512F,-AVX512VL,-AVX512BW,-AVX512CD,-AVX512DQ` |
@@ -1001,10 +1001,10 @@ AutoGen is in **maintenance mode** as of late 2025. Microsoft is merging AutoGen
 
 ---
 
-## F-006: Mem0 Docker Image Platform Incompatibility → RESURRECTED
+## F-006: Mem0 Docker Image Platform Incompatibility → STILL BLOCKED
 
 **Date**: 2026-01-24 | **Updated**: 2026-01-27  
-**Severity**: ~~BLOCKING~~ **RESURRECTED**  
+**Severity**: **STILL BLOCKED** (Pivot to OpenMemory)  
 **Component**: mem0 persistent memory layer
 
 **Symptoms**:
@@ -1014,23 +1014,36 @@ Error response from daemon: no matching manifest for linux/amd64 in the manifest
 
 **Root Cause**: `mem0/mem0-api-server:latest` only published ARM64 images. No linux/amd64 variant existed.
 
-**2026-01-27 Update (Sentinel Audit):**  
-GitHub Issue #2884 was **RESOLVED** on June 25, 2025. Mem0 team confirmed: "we've now released an amd64 image as well."
+**2026-01-27 Update (Sentinel Audit ULTRATHINK):**  
+GitHub Issue #2884 claims **RESOLVED** on June 25, 2025. However, **VERIFICATION FAILED** — Docker Hub manifest inspection confirms:
+- `mem0/mem0-api-server:latest` → **linux/arm64/v8 ONLY**
+- Community build `jzacharie/mem0:latest` → Connection timeout
 
-**Current Status:**
-- `mem0/mem0-api-server:latest` now includes linux/amd64
-- `mem0/openmemory-mcp:latest` also supports amd64
-- Current version: v1.0.2 (Jan 13, 2026)
+**Pivot Decision:**
+| Solution | Status | Verdict |
+|----------|--------|---------|
+| Mem0 Docker | arm64 only | **REJECTED** |
+| Zep Community | Deprecated | **REJECTED** |
+| Letta (MemGPT) | amd64, needs Postgres | Viable but heavy |
+| **OpenMemory (CaviraOSS)** | amd64, SQLite default | **SELECTED** |
 
-**Migration Path:**
-```yaml
-# Update omni-stack.yaml
-mem0:
-  image: mem0/mem0-api-server:latest  # Official image now works
-  platform: linux/amd64
+**Deployment Path:**
+```bash
+# SDK integration (zero dependencies)
+pip install openmemory-py
+
+# Or server mode with Docker Compose
+git clone https://github.com/CaviraOSS/OpenMemory.git
+cd OpenMemory && docker compose up --build -d
 ```
 
-**Lesson**: Always verify Docker image platform support before adding to production stack. Check periodically for upstream fixes.
+**Why OpenMemory:**
+- Local-first with SQLite (zero ops burden)
+- LangChain/LangGraph native SDK integration
+- MCP compatible
+- Explainable memory traces
+
+**Lesson**: Always verify Docker image platform support independently. Issue tracker "resolved" status doesn't guarantee fix is deployed. Trust but verify.
 
 ---
 
