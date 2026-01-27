@@ -1,8 +1,8 @@
 # Protocol OMNI: Lessons Learned Registry
 
 > **Purpose**: Chronicle of failures, pivots, and hard-won knowledge for AI agent training  
-> **Last Updated**: 2026-01-26  
-> **Versions Covered**: v13.0 → v16.4.3
+> **Last Updated**: 2026-01-27  
+> **Versions Covered**: v13.0 → v16.4.12
 
 This document captures architectural decisions, failed experiments, and pivots to prevent agents from repeating mistakes.
 
