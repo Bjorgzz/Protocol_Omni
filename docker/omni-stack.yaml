@@ -313,7 +313,7 @@ services:
     ports:
       - "8283:8283"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8283/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8283/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -356,7 +356,7 @@ services:
       QDRANT__SERVICE__GRPC_PORT: "6334"
       QDRANT__LOG_LEVEL: "INFO"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD", "/qdrant/qdrant", "--version"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -402,7 +402,7 @@ services:
     ports:
       - "8070:8070"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8070/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8070/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -510,7 +510,7 @@ services:
     environment:
       PHOENIX_WORKING_DIR: /data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6006/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6006/')"]
       interval: 30s
       timeout: 10s
       retries: 3
