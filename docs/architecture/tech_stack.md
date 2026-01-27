@@ -91,9 +91,9 @@ Hardware specifications, software versions, and stack decisions for Protocol OMN
 
 ---
 
-## Stack Assessment (2026-01-25 Paradigm Audit) — Historical
+## Stack Assessment (2026-01-27 Update)
 
-> **Note**: This audit predates the 2026-01-27 MLA upgrade. Inference engine choice remains valid.
+> **Note**: Updated 2026-01-27 to reflect F-006 pivot from Mem0 to OpenMemory.
 
 | Layer | Choice | Alternatives Evaluated | Verdict |
 |-------|--------|------------------------|---------|
