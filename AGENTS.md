@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.10)
+# Protocol OMNI (v16.4.12)
 
-> **Last Updated**: 2026-01-27 | **Phase**: STABLE | **Status**: PRODUCTION RESTORED
+> **Last Updated**: 2026-01-27 | **Phase**: STABLE | **Status**: MLA + KV QUANT COMPLETE
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,16 +10,18 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | STABLE - Post-Recovery |
-| **Version** | v16.4.10 |
-| **Active Op** | None — Baseline accepted |
+| **Phase** | STABLE - MLA + KV Quant Optimized |
+| **Version** | v16.4.12 |
+| **Active Op** | DeepSeek-R1-0528 Q6_K download (~62GB / 564GB) |
 | **Production** | **llama.cpp RUNNING** @ port 8000 (Iron Lung) ✅ |
-| **Baseline** | **10.35 tok/s ACCEPTED** — Expected ceiling for asymmetric GPUs |
+| **Baseline** | **11.35 tok/s ACHIEVED** — +9.7% total (MLA + KV quant q4_1) |
+| **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **INT8 Asset** | `/nvme/models/deepseek-r1-int8/` (642GB, unusable on this hardware) |
+| **Memory Layer** | **PENDING** — OpenMemory (CaviraOSS) selected, Mem0 BLOCKED (F-006) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-27 - Driver 580.126.09 ✅, ik_llama.cpp BLOCKED (F-024) |
+| **Sentinel Audit** | 2026-01-27 - Mem0 BLOCKED (F-006), pivot to OpenMemory |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -27,7 +29,11 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-27 Decision**: **10.35 tok/s baseline ACCEPTED**. KTransformers DEFERRED for later.
+- **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. Total: 11.35 tok/s (+9.7% from 10.35 baseline).
+- **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
+- **2026-01-27 F-006 Mem0**: Docker image STILL arm64 only despite "resolved" issue. Pivoted to OpenMemory (CaviraOSS).
+- **2026-01-27 Decision (Historical)**: 10.35 tok/s baseline was accepted pre-MLA. Now superseded by 11.35 tok/s.
+- **2026-01-27 KTransformers**: DEFERRED for later (F-027).
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
 - **F-027**: KTransformers v0.5.1 has ABI mismatch + sched_ext chain. DEFERRED (4-8h fix, ~10-30% gain).
@@ -116,18 +122,21 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 
 ## Sentinel Audit 2026-01-27 Summary
 
-**Decision (2026-01-27):** Baseline ACCEPTED. KTransformers pursuit DEFERRED.
+**Decision (2026-01-27):** MLA + KV Quant COMPLETE. 11.35 tok/s ACHIEVED.
 
 | Finding | Status | Priority |
 |---------|--------|----------|
-| **10.35 tok/s baseline** | **ACCEPTED** ✅ | Production |
+| **11.35 tok/s baseline** | **ACHIEVED** ✅ | Production |
+| llama.cpp MLA (PR #19057) | **DEPLOYED** ✅ | Done |
+| KV cache quant (`q4_1`) | **DEPLOYED** ✅ | Done |
 | Driver 580.95.05 → 580.126.09 | **COMPLETE** ✅ (no perf gain) | Done |
 | ik_llama.cpp split mode graph | **BLOCKED** (F-024) - MoE unsupported | Done |
 | NVIDIA Dynamo v0.8.1 | **NOT VIABLE** (F-025) - datacenter-only | Done |
 | ExLlamaV3 | **NOT VIABLE** (F-026) - DeepSeek unsupported | Done |
 | 20 tok/s config | **IDENTIFIED** (S-014) - needs 2x PRO 6000 | Info |
 | KTransformers v0.5.1 | **DEFERRED** (F-027) - User decision: later | Future |
-| Mem0 amd64 (F-006) | **RESURRECTED** | P3 |
+| Mem0 amd64 (F-006) | **STILL BLOCKED** — Pivot to OpenMemory | In Progress |
+| DeepSeek-R1-0528 Q6_K | **DOWNLOADING** (~62GB / 564GB) | P3 |
 | vLLM SM120 (Issue #26211) | Still BLOCKED | Monitor |
 
 **Full Report**: `docs/architecture/lessons-learned.md`
