@@ -31,9 +31,15 @@ This document captures architectural decisions, failed experiments, and pivots t
 | Missing hwloc/pkg-config (F-015) | CMake can't find HWLOC | Add `pkg-config libhwloc-dev` to apt-get |
 | kt-kernel only (F-016) | Main package in archive/ needs cmake | Install BOTH kt-kernel AND archive/ with cmake |
 | Archive third_party path (F-017) | CMake expects ../../third_party | **RESOLVED**: `rm -rf` + `cp -r` third_party into archive/ ✅ |
-| balance_serve/sched_ext (F-018) | C++20 extension required for ktransformers server | Build separately or wait for prebuilt wheel |
-| kt-kernel FP8→INT8 conversion (F-019) | Segfault at MoE layer 3 | Use pre-quantized weights (Meituan INT8) |
-| FP8 weights on 377GB RAM (F-020) | 642GB > RAM, SGLang OOM | Use pre-quantized INT8 (~350GB) |
+| balance_serve/sched_ext (F-018/F-023) | Deep dependency chain (prometheus-cpp, PhotonLibOS, xxHash, TBB) | **llama.cpp only** - KTransformers 0.4.1 GGUF path blocked |
+| kt-kernel FP8→INT8 conversion (F-019) | Segfault at MoE layer 3 | Use llama.cpp GGUF (pre-quantized HF weights also 642GB) |
+| FP8 weights on 377GB RAM (F-020) | 642GB > RAM, SGLang OOM | **Superseded by F-022** - INT8 also 642GB, use llama.cpp GGUF |
+| Meituan INT8 on 377GB RAM (F-022) | 642GB > 584GB addressable, system crash | **llama.cpp GGUF only** - SGLang loading requires full model in RAM |
+| ik_llama.cpp split mode graph (F-024) | Not supported for MoE, OOM on layer mode | Standard llama.cpp for DeepSeek-R1 MoE |
+| NVIDIA Dynamo (F-025) | Datacenter-scale only, needs homogeneous clusters | llama.cpp for single-node asymmetric GPUs |
+| ExLlamaV3 (F-026) | DeepSeek architecture not supported | llama.cpp or wait for arch support |
+| KTransformers v0.5.1 (F-027) | ABI mismatch + sched_ext chain (4-8h fix, ~10-30% gain) | **DEFERRED** - Low ROI vs stable 10 tok/s |
+| 20 tok/s Blackwell (S-014) | Requires 2x PRO 6000 symmetric | Our asymmetric 96+32GB → 10 tok/s is expected |
 
 ---
 
@@ -280,7 +286,7 @@ GPU 0 has a total capacity of 94.97 GiB of which 5.74 GiB is free.
 Including non-PyTorch memory, this process has 88.54 GiB memory in use.
 ```
 
-**Root Cause**: DeepSeek-R1 FP8 weights total 642GB. System has 377GB RAM + 200GB swap = 577GB addressable, but:
+**Root Cause**: DeepSeek-R1 FP8 weights total 642GB. System has 377GB RAM + 207GB NVMe swap = 584GB addressable, but:
 1. SGLang needs GPU memory for dense layers + KV cache
 2. CPU offload (`--cpu-offload-gb 500`) still requires GPU for MoE expert routing
 3. Even with aggressive offload, GPU OOMs during expert allocation
@@ -294,9 +300,238 @@ Including non-PyTorch memory, this process has 88.54 GiB memory in use.
 
 **Why llama.cpp Works**: llama.cpp uses GGUF with aggressive quantization (Q4_K_M = 377GB). SGLang tries to load FP8 which is 1.7x larger.
 
-**Resolution**: Pivot to `meituan/DeepSeek-R1-Block-INT8` pre-quantized weights (~350GB).
+**Resolution**: ~~Pivot to `meituan/DeepSeek-R1-Block-INT8` pre-quantized weights (~350GB)~~ **SUPERSEDED**: F-022 proved Meituan INT8 is also 642GB. **llama.cpp GGUF is the only viable path.**
 
-**Lesson**: For SGLang + DeepSeek 671B on consumer hardware (377GB RAM), use pre-quantized INT8 weights. FP8 HF weights are designed for multi-node clusters with 1TB+ RAM.
+**Lesson**: For SGLang + DeepSeek 671B on consumer hardware (377GB RAM), neither FP8 nor INT8 HF weights fit. Use llama.cpp GGUF (Q4_K_M = 377GB) which streams layers instead of loading all at once.
+
+---
+
+### F-022: Meituan INT8 Still Exceeds RAM - System Crash
+
+**Date**: 2026-01-27  
+**Version**: v16.4.9  
+**Severity**: CRITICAL  
+**Component**: Operation Lazarus Phase 5 - SGLang INT8 loading
+
+**Symptoms**:
+```
+[2026-01-26 23:15:21] Rank 0 scheduler is dead.
+[2026-01-26 23:16:07] Exit code: -9
+```
+System became completely unresponsive - SSH timeout, all services unreachable.
+
+**Root Cause**: `meituan/DeepSeek-R1-Block-INT8` is NOT ~350GB as assumed - it's **642GB** (same as FP8). SGLang loads ALL weights into memory before distributing to CPU offload.
+
+**Memory Timeline**:
+| Time | RAM Used | Swap Used | GPU VRAM |
+|------|----------|-----------|----------|
+| Start | 23GB | 2.6GB | 14GB |
+| +60s | 319GB | 2.6GB | 14.7GB |
+| +90s | 375GB | 8GB | 14.8GB |
+| Crash | 376GB+ | 8.9GB+ | 14.9GB |
+
+Even with 207GB NVMe swap enabled (377GB + 207GB = 584GB), the 642GB model exceeded addressable memory.
+
+**Critical Discovery**: The assumption that "Meituan INT8 weights ~350GB" was **FALSE**. The model remains 642GB regardless of INT8 vs FP8 because:
+1. INT8 refers to activation quantization, NOT weight quantization
+2. Model weights are stored at full precision with INT8 scale factors
+3. Total checkpoint size: 163 files × ~4GB each = 642GB
+
+**System Impact**: Severe memory pressure caused:
+- OOM killer (SIGKILL -9) on scheduler process
+- System swap thrashing
+- Complete unresponsiveness requiring physical reboot
+
+**Resolution**: **SGLang + DeepSeek-R1 671B is BLOCKED** on this hardware. Options:
+1. **llama.cpp (RECOMMENDED)**: GGUF streaming loader doesn't require full model in RAM
+2. **NVIDIA Dynamo**: Investigate disaggregated serving for asymmetric hardware
+3. **Distilled models**: DeepSeek-R1-Distill-8B/32B fit in available memory
+4. **Cluster expansion**: Add RAM to reach 1TB+ for full model loading
+
+**Lesson**: Never assume model size from quantization format name. Always verify actual checkpoint size before loading. SGLang's loading strategy requires peak memory ≥ model size, unlike GGUF which streams layers.
+
+---
+
+### F-023: KTransformers sched_ext Dependency Hell - GGUF Path Blocked
+
+**Date**: 2026-01-27  
+**Version**: v16.4.10  
+**Severity**: BLOCKING  
+**Component**: Operation Lazarus Phase 6 - KTransformers GGUF inference
+
+**Context**: After discovering KTransformers supports GGUF format (not just HuggingFace weights), attempted to use it as faster alternative to llama.cpp for Q4_K_M model.
+
+**What Succeeded**:
+- Rebuilt `KTransformersOps.so` with SM120 targeting ✅
+- Fixed PyTorch ABI mismatch (original import error) ✅
+- PyTorch 2.9.1+cu128 with sm_120 verified ✅
+
+**What Failed**: The `sched_ext` module import - required even for basic GGUF inference.
+
+**Dependency Chain Discovered**:
+```
+sched_ext (balance_serve C++ extension) requires:
+├── prometheus-cpp (built from source ✅)
+├── TBB (apt install ✅)
+├── OpenSSL (apt install ✅)  
+├── libaio (apt install ✅)
+├── libcurl (apt install ✅)
+├── PhotonLibOS (Alibaba async I/O library, cloned ✅)
+└── xxHash (cloned ❌ - expects deprecated cmake_unofficial/ structure)
+    └── [Unknown additional deps likely]
+```
+
+**Architecture Issue**: KTransformers 0.4.1 hardcodes `sched_ext` import in `custom_cache.py` line 25:
+```python
+from ktransformers.server.balance_serve.settings import sched_ext
+```
+
+This is **unconditional** - even `local_chat` for simple GGUF inference triggers the full server scheduling import chain.
+
+**Why This Matters**:
+- The GGUF path was theoretically viable: mmap() loading, ~10 tok/s decode
+- But the code architecture couples basic inference to server scheduling
+- No easy workaround without patching source (risky)
+
+**Resolution**: **KTransformers GGUF path is BLOCKED** on version 0.4.1. The dependency investment (4+ hours estimated) doesn't justify potential 10% performance gain over llama.cpp.
+
+**Alternatives**:
+1. **llama.cpp (RECOMMENDED)**: Working at 10.9 tok/s, stable
+2. **Wait for KTransformers 0.5+**: May decouple sched_ext from inference
+3. **Fork and patch**: Remove sched_ext dependency (high risk)
+
+**Lesson**: Even when CUDA kernels build successfully (sm_120 targeting works!), the full inference path may have deep C++ extension dependencies. Always trace the complete import chain before declaring success.
+
+---
+
+### F-024: ik_llama.cpp Split Mode Graph Not Supported for MoE
+
+**Date**: 2026-01-27  
+**Version**: v16.4.10  
+**Severity**: BLOCKING  
+**Component**: Performance optimization - ik_llama.cpp evaluation
+
+**Context**: Evaluated ik_llama.cpp's `--split-mode graph` feature which claimed 3x-4x performance gains on multi-GPU systems.
+
+**Symptoms**:
+```
+=======================================================
+Split mode 'graph' is not supported for this model
+  => changing split mode to 'layer'
+=======================================================
+```
+
+**Root Cause**: ik_llama.cpp's split mode graph is designed for **dense transformer models**, not Mixture-of-Experts architectures. DeepSeek-R1 uses MoE with 256 experts and Multi-head Latent Attention (MLA), which the graph optimization cannot handle.
+
+**Fallback Attempt (Layer Mode)**:
+| GPU Layers | Result |
+|------------|--------|
+| 19 (default) | OOM: tried to allocate 100GB on 96GB GPU |
+| 15 (reduced) | OOM: tried to allocate 31.5GB compute buffer |
+
+Even with MLA flag (`-mla 2`) enabled, layer mode failed due to ik_llama.cpp's different memory allocation strategy (large contiguous blocks vs llama.cpp's streaming approach).
+
+**Why Standard llama.cpp Works**: 
+- Streams layers incrementally
+- Allocates smaller buffers
+- Same model runs fine with `--n-gpu-layers 19 --tensor-split 75,25`
+
+**Resolution**: **ik_llama.cpp is NOT VIABLE** for DeepSeek-R1 MoE on asymmetric GPUs. Standard llama.cpp remains optimal.
+
+**Lesson**: Multi-GPU optimizations often assume dense architectures. MoE models with expert routing create irregular memory access patterns that break graph-based optimizations. Always test with the actual model architecture, not just VRAM calculations.
+
+---
+
+### F-025: NVIDIA Dynamo Not Viable for Single-Node Asymmetric GPUs
+
+**Date**: 2026-01-27  
+**Version**: v16.4.10  
+**Severity**: INFORMATIONAL  
+**Component**: Performance optimization research
+
+**Context**: Evaluated NVIDIA Dynamo as potential optimization path for 96GB + 32GB asymmetric GPU setup.
+
+**Findings**:
+- Dynamo is designed for **datacenter-scale multi-node deployments**
+- Assumes homogeneous GPU clusters (same GPU type per node)
+- Disaggregated prefill/decode requires multiple identical nodes
+- Single-node asymmetric configurations not a target use case
+
+**Key Documentation Quotes**:
+> "A Datacenter Scale Distributed Inference Serving Framework"
+> "GPU Resource Planner: monitors capacity in multi-node deployments"
+> "Smart Router: directs traffic across large GPU fleets in multi-node deployments"
+
+**Resolution**: NVIDIA Dynamo is **NOT VIABLE** for our hardware configuration. llama.cpp remains optimal for single-node asymmetric GPUs.
+
+**Lesson**: Enterprise inference frameworks (Dynamo, TensorRT-LLM cluster mode) target homogeneous multi-node deployments. Consumer asymmetric setups need purpose-built solutions like llama.cpp's pipeline parallelism.
+
+---
+
+### F-026: ExLlamaV3 Does Not Support DeepSeek Architecture
+
+**Date**: 2026-01-27  
+**Version**: v16.4.10  
+**Severity**: INFORMATIONAL  
+**Component**: Performance optimization research
+
+**Context**: Evaluated ExLlamaV3 as potential faster inference engine for DeepSeek-R1 MoE.
+
+**Findings**:
+ExLlamaV3 supported MoE architectures (as of Jan 2026):
+- Mixtral
+- ERNIE 4.5 MoE
+- GLM 4 MoE, GLM 4.5V MoE
+- Qwen 3 MoE
+
+ExLlamaV3 does **NOT** support:
+- DeepSeek
+- DeepSeek2 (deepseek2 architecture)
+- DeepSeek MoE variants
+
+**Resolution**: ExLlamaV3 is **NOT VIABLE** for DeepSeek-R1. Wait for architecture support or continue with llama.cpp.
+
+**Lesson**: Always verify model architecture support before evaluating inference engines. MoE support doesn't mean all MoE architectures - each has unique attention patterns (MLA, GQA, etc.) requiring explicit implementation.
+
+---
+
+### F-027: KTransformers v0.5.1 DEFERRED - Multiple Blockers, Low ROI
+
+**Date**: 2026-01-27  
+**Version**: v16.4.10  
+**Severity**: INFORMATIONAL  
+**Component**: Performance optimization research
+
+**Context**: Evaluated KTransformers v0.5.1 as potential faster inference engine for DeepSeek-R1 GGUF.
+
+**Test Results**:
+| Component | Status | Issue |
+|-----------|--------|-------|
+| kt_kernel 0.5.1 | ✅ WORKS | CUDA kernels import successfully |
+| KTransformersOps.so | ❌ BROKEN | PyTorch ABI mismatch: `undefined symbol: _ZN3c104cuda29c10_cuda...` |
+| sched_ext | ❌ BLOCKED | Would fail after ABI fix (per F-023) |
+
+**Error Chain**:
+```
+ktransformers.server.main 
+  → ktransformers.util.custom_loader 
+    → import KTransformersOps → ABI ERROR
+
+If ABI fixed, next would be:
+ktransformers.models.custom_cache 
+  → import sched_ext → BLOCKED (F-023)
+```
+
+**Fix Effort**: 4-8 hours
+- Rebuild KTransformersOps.so with correct PyTorch ABI
+- Build balance_serve C++ extension (prometheus-cpp, PhotonLibOS, xxHash, TBB)
+- High uncertainty of success
+
+**Expected Gain**: ~10-30% (14-16 tok/s vs 10.35 tok/s baseline)
+
+**Resolution**: **DEFERRED** - Risk/reward ratio unfavorable. llama.cpp at 10.35 tok/s is stable and production-ready. The 20 tok/s benchmark requires symmetric 2x PRO 6000 hardware.
+
+**Lesson**: Multi-layer dependencies (CUDA kernels → C++ extensions → Python modules → server framework) create compounding failure modes. When baseline is stable and gain is marginal, defer complex optimization attempts.
 
 ---
 
@@ -556,6 +791,36 @@ docker exec -d ktransformers-sglang bash -c 'HF_HUB_DOWNLOAD_WORKERS=16 huggingf
 
 ---
 
+### S-014: 20 tok/s Blackwell Configuration Discovered
+
+**Date**: 2026-01-27  
+**Impact**: INFORMATIONAL (hardware upgrade path)
+
+**Discovery**: YouTube benchmark showing 20 tok/s on DeepSeek-R1-0528 uses:
+- **2x RTX PRO 6000 Blackwell** (symmetric 192GB VRAM)
+- EPYC multi-socket CPU with NUMA optimization
+- Standard llama.cpp (not ik_llama.cpp or Dynamo)
+- Q4_K_M quantization
+
+**Our Configuration**:
+| Component | 20 tok/s Setup | Our Setup |
+|-----------|----------------|-----------|
+| GPU Config | 2x PRO 6000 (symmetric) | 1x PRO 6000 + 1x 5090 (asymmetric) |
+| Total VRAM | 192GB | 128GB |
+| GPU Split | 50/50 (tensor parallel) | 75/25 (pipeline parallel) |
+| Performance | 20 tok/s | 10.35 tok/s |
+
+**Why We Can't Match**:
+1. Asymmetric GPUs force pipeline parallelism (bucket filling) vs tensor parallelism (matrix splits)
+2. 75/25 split creates uneven workload distribution
+3. No NVLink between different GPU architectures (5090 ≠ PRO 6000)
+
+**Upgrade Path**: To achieve 20 tok/s, would need second RTX PRO 6000 Blackwell (~$12K) for symmetric 192GB configuration.
+
+**Lesson**: Performance scaling with multi-GPU is highly dependent on symmetry. Asymmetric setups (different VRAM, architectures) incur pipeline parallelism overhead. Our 10 tok/s is the expected ceiling for this hardware combination.
+
+---
+
 ### S-005: NPS1 BIOS Optimization (2.1x Speedup)
 
 **Date**: 2026-01-24  
@@ -736,10 +1001,10 @@ AutoGen is in **maintenance mode** as of late 2025. Microsoft is merging AutoGen
 
 ---
 
-## F-006: Mem0 Docker Image Platform Incompatibility
+## F-006: Mem0 Docker Image Platform Incompatibility → RESURRECTED
 
-**Date**: 2026-01-24  
-**Severity**: BLOCKING  
+**Date**: 2026-01-24 | **Updated**: 2026-01-27  
+**Severity**: ~~BLOCKING~~ **RESURRECTED**  
 **Component**: mem0 persistent memory layer
 
 **Symptoms**:
@@ -747,22 +1012,126 @@ AutoGen is in **maintenance mode** as of late 2025. Microsoft is merging AutoGen
 Error response from daemon: no matching manifest for linux/amd64 in the manifest list entries
 ```
 
-**Root Cause**: `mem0/mem0-api-server:latest` only publishes ARM64 images. No linux/amd64 variant exists.
+**Root Cause**: `mem0/mem0-api-server:latest` only published ARM64 images. No linux/amd64 variant existed.
 
-**Attempted Fixes**:
-| Attempt | Result |
-|---------|--------|
-| `docker pull mem0ai/mem0:latest` | Image does not exist |
-| `docker pull mem0/mem0-api-server:latest` | No amd64 manifest |
+**2026-01-27 Update (Sentinel Audit):**  
+GitHub Issue #2884 was **RESOLVED** on June 25, 2025. Mem0 team confirmed: "we've now released an amd64 image as well."
 
-**Resolution**: Commented out mem0 service in omni-stack.yaml. Using Qdrant directly for vector storage.
+**Current Status:**
+- `mem0/mem0-api-server:latest` now includes linux/amd64
+- `mem0/openmemory-mcp:latest` also supports amd64
+- Current version: v1.0.2 (Jan 13, 2026)
 
-**Alternatives**:
-1. Build mem0 from source: `git clone https://github.com/mem0ai/mem0 && docker build`
-2. Use OpenMemory MCP: `npx @openmemory/install`
-3. Wait for official amd64 image
+**Migration Path:**
+```yaml
+# Update omni-stack.yaml
+mem0:
+  image: mem0/mem0-api-server:latest  # Official image now works
+  platform: linux/amd64
+```
 
-**Lesson**: Always verify Docker image platform support before adding to production stack.
+**Lesson**: Always verify Docker image platform support before adding to production stack. Check periodically for upstream fixes.
+
+---
+
+## F-021: Docker Health Check - curl Not Installed in Base Images
+
+**Date**: 2026-01-27  
+**Version**: v16.4.4  
+**Severity**: OPERATIONAL  
+**Component**: Docker Compose health checks
+
+**Symptoms**:
+```
+OCI runtime exec failed: exec failed: unable to start container process: exec: "curl": executable file not found in $PATH
+```
+
+**Affected Containers**:
+- `qdrant` - Rust minimal image, no curl
+- `mcp-proxy` - Python image, no curl
+- `arize-phoenix` - Python image, no curl
+- `letta` - Python image, no curl (also had wrong endpoint path - 404)
+
+**Root Cause**: Many Docker base images (especially minimal/distroless) don't include `curl`. Using `curl` in health checks causes false "unhealthy" status even when container is functioning correctly.
+
+**Resolution**: Replace `curl` with alternatives available in each image:
+
+| Image Type | Health Check |
+|------------|--------------|
+| Python-based | `python -c "import urllib.request; urllib.request.urlopen('http://...')"` |
+| Alpine | `wget -q --spider http://...` |
+| Rust minimal | Binary self-check: `/app/binary --version` |
+| Prometheus | `wget -q --spider http://...` |
+
+**Files Changed**:
+- `docker/omni-stack.yaml`: letta, qdrant, mcp-proxy, arize-phoenix health checks
+
+**Lesson**: Never assume `curl` exists in Docker images. Use image-native tools for health checks: `wget` for Alpine, `python urllib` for Python images, binary self-checks for compiled languages.
+
+**Additional Finding (Distroless Images)**:
+```
+OCI runtime exec failed: exec failed: unable to start container process: exec: "/bin/sh": stat /bin/sh: no such file or directory
+```
+
+Distroless images (e.g., `arizephoenix/phoenix`) lack `/bin/sh`. `CMD-SHELL` format requires a shell and will fail. Use `CMD` format instead:
+
+| Format | Requirement | Example |
+|--------|-------------|---------|
+| `CMD-SHELL` | Needs `/bin/sh` | `["CMD-SHELL", "python -c \"...\""]` |
+| `CMD` | Direct binary | `["CMD", "python", "-c", "..."]` |
+
+**Known Limitation (Minimal Rust Images)**:
+Containers like `qdrant/qdrant` have no shell, wget, or curl. The only option is binary self-check (`/qdrant/qdrant --version`), which validates the binary exists but NOT that the HTTP/gRPC API is ready. For true API health checks, a custom image with health tooling would be required.
+
+| Image | Available Tools | Best Health Check |
+|-------|-----------------|-------------------|
+| Python-based | `python` | `["CMD", "python", "-c", "import urllib..."]` |
+| Alpine | `wget` | `["CMD", "wget", "-q", "--spider", "..."]` |
+| Minimal Rust | Binary only | `["CMD", "/app/binary", "--version"]` (limited) |
+
+---
+
+## S-013: Sentinel Audit 2026-01-27 - Full Stack Review
+
+**Date**: 2026-01-27  
+**Version**: v16.4.4  
+**Impact**: HIGH
+
+**Audit Scope**: All four Sentinel Audit layers (Software, System, Strategic, Cold Case)
+
+**Key Findings**:
+
+### Driver Upgrade Available
+| Component | Installed | Latest | Action |
+|-----------|-----------|--------|--------|
+| NVIDIA Driver | 580.95.05 | 580.126.09 | **UPGRADE RECOMMENDED** |
+
+Key fixes in 580.126.09:
+- YUV 4:2:0 display fix
+- Linux kernel 6.19+ compatibility
+- Buffer scrubbing performance
+- NVLink connection recovery
+
+### NVIDIA Dynamo Evaluation
+New inference framework (v0.4.0 → v0.8.1 available):
+- **Disaggregated serving** - perfect for 96GB + 32GB asymmetric GPUs
+- DeepSeek-R1/V3 supported
+- Blackwell sm_120 compatible
+- **Recommendation**: Sandbox test v0.7+
+
+### vLLM/SGLang SM120 Status
+| Engine | FP8 DeepSeek | Non-FP8 | Status |
+|--------|--------------|---------|--------|
+| vLLM | BLOCKED (#26211) | Source build | WAIT |
+| SGLang | W4A8 issues | Works | **USABLE** |
+
+### Cold Case Resurrections
+| Technology | Original Status | New Status |
+|------------|-----------------|------------|
+| F-006 Mem0 amd64 | BLOCKED | **RESURRECTED** |
+| KTransformers+SGLang | BLOCKED | **WAIT** (AMX-exclusive) |
+
+**Lesson**: Quarterly Sentinel Audits catch upstream fixes that silently unblock previously-failed integrations. Always run Cold Case Review on `lessons-learned.md`.
 
 ---
 
@@ -770,6 +1139,10 @@ Error response from daemon: no matching manifest for linux/amd64 in the manifest
 
 | Version | Date | Change |
 |---------|------|--------|
+| v1.15 | 2026-01-27 | Updated F-021: Added CMD vs CMD-SHELL guidance for distroless images |
+| v1.14 | 2026-01-27 | **F-006 RESURRECTED**: Mem0 amd64 Docker image available (Issue #2884 resolved) |
+| v1.14 | 2026-01-27 | Added F-021: Docker health check curl not installed |
+| v1.14 | 2026-01-27 | Added S-013: Sentinel Audit 2026-01-27 (Driver upgrade, Dynamo eval, vLLM/SGLang status) |
 | v1.13 | 2026-01-26 | Added S-009: NVMe swap, S-010: HF download optimization |
 | v1.12 | 2026-01-26 | Added P-005: FP8 → Meituan INT8 pivot (RAM constraint) |
 | v1.11 | 2026-01-26 | Added F-020: FP8 RAM constraint (642GB > 377GB), F-019: kt-kernel FP8 conversion segfault |
