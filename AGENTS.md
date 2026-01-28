@@ -12,7 +12,8 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 |------|-------|
 | **Phase** | STABLE - R1-0528 Benchmark Prep |
 | **Version** | v16.4.13 |
-| **Active Op** | DeepSeek-R1-0528 Q4_K_M download (~28GB / 409GB) @ 142 MB/s |
+| **Active Op** | DeepSeek-R1-0528 Q4_K_M download (~64GB / 409GB) @ 142 MB/s |
+| **Disk** | 74% used (940GB free) — verified 2026-01-28 |
 | **Production** | **llama.cpp RUNNING** @ port 8000 (Iron Lung) ✅ |
 | **Baseline** | **11.35 tok/s ACHIEVED** — +9.7% total (MLA + KV quant q4_1) |
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
@@ -21,7 +22,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **INT8 Asset** | **DELETED** — freed 642GB for R1-0528 download |
 | **Memory Layer** | **INSTALLED** — `openmemory-py 1.3.2` (testing pending) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-28 - Kimi K2.5 audit: WATCH (llama.cpp blocked) |
+| **Sentinel Audit** | 2026-01-28 - Kimi K2.5: WATCH (text-only GGUF exists, vision blocked) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -29,7 +30,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — llama.cpp conversion BLOCKED (Issue #19127), wait 2-4 weeks.
+- **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
 - **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` installed, testing pending.
 - **2026-01-28 INT8 Deleted**: Freed 642GB `/nvme/models/deepseek-r1-int8/` — confirmed unusable per F-022.
@@ -58,7 +59,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Container** | `ktransformers-sglang` | DEFERRED (F-027) — future KTransformers work |
 | **Container** | `deepseek-r1` | llama.cpp production |
 
-**Monitor Commands:**
+**Monitor Commands (run from host, NOT inside containers):**
 ```bash
 # Download progress (R1-0528 Q4_K_M)
 ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-0528-q4km/"
@@ -66,7 +67,7 @@ ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-0528-q4km/"
 # GPU status
 ssh omni@100.94.47.77 "nvidia-smi --query-gpu=memory.used,memory.total --format=csv"
 
-# Iron Lung health
+# Iron Lung health (host curl OK; use wget/python inside containers per F-021)
 curl http://192.168.3.10:8000/health
 ```
 
