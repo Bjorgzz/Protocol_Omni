@@ -10,13 +10,13 @@ fi
 BASELINE="$1/benchmark-results.txt"
 OPTIMIZED="$2/benchmark-results.txt"
 
-if [ ! -f "$BASELINE" ]; then
-  echo "Error: Baseline file not found: $BASELINE"
+if [ ! -f "$BASELINE" ] || [ ! -r "$BASELINE" ]; then
+  echo "Error: Baseline file not found or not readable: $BASELINE"
   exit 1
 fi
 
-if [ ! -f "$OPTIMIZED" ]; then
-  echo "Error: Optimized file not found: $OPTIMIZED"
+if [ ! -f "$OPTIMIZED" ] || [ ! -r "$OPTIMIZED" ]; then
+  echo "Error: Optimized file not found or not readable: $OPTIMIZED"
   exit 1
 fi
 
@@ -26,15 +26,15 @@ echo "Optimized: $OPTIMIZED"
 echo ""
 
 echo "=== Baseline Results ==="
-grep -E "tok/s|Generation" "$BASELINE" | tail -5 || echo "(no matching lines)"
+grep -E "tok/s|Generation" "$BASELINE" | tail -5 || { rc=$?; [ $rc -eq 1 ] && echo "(no matching lines)" || exit $rc; }
 echo ""
 
 echo "=== Optimized Results ==="
-grep -E "tok/s|Generation" "$OPTIMIZED" | tail -5 || echo "(no matching lines)"
+grep -E "tok/s|Generation" "$OPTIMIZED" | tail -5 || { rc=$?; [ $rc -eq 1 ] && echo "(no matching lines)" || exit $rc; }
 echo ""
 
 extract_gen_speed() {
-  grep "Generation:" "$1" 2>/dev/null | head -1 | sed 's/.*@ *\([0-9.]*\) *tok\/s.*/\1/' || true
+  grep "Generation:" "$1" 2>/dev/null | head -1 | sed -n 's/.*@ *\([0-9.]*\) *tok\/s.*/\1/p'
 }
 
 BASE_GEN=$(extract_gen_speed "$BASELINE")
