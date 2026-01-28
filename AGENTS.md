@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.12)
+# Protocol OMNI (v16.4.13)
 
-> **Last Updated**: 2026-01-27 | **Phase**: STABLE | **Status**: MLA + KV QUANT COMPLETE
+> **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 BENCHMARK PREP
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,18 +10,18 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | STABLE - MLA + KV Quant Optimized |
-| **Version** | v16.4.12 |
-| **Active Op** | DeepSeek-R1-0528 Q6_K download (~62GB / 564GB) |
+| **Phase** | STABLE - R1-0528 Benchmark Prep |
+| **Version** | v16.4.13 |
+| **Active Op** | DeepSeek-R1-0528 Q4_K_M download (~28GB / 409GB) @ 142 MB/s |
 | **Production** | **llama.cpp RUNNING** @ port 8000 (Iron Lung) ✅ |
 | **Baseline** | **11.35 tok/s ACHIEVED** — +9.7% total (MLA + KV quant q4_1) |
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
-| **INT8 Asset** | `/nvme/models/deepseek-r1-int8/` (642GB, unusable on this hardware) |
-| **Memory Layer** | **PENDING** — OpenMemory (CaviraOSS) selected, Mem0 BLOCKED (F-006) |
+| **INT8 Asset** | **DELETED** — freed 642GB for R1-0528 download |
+| **Memory Layer** | **INSTALLED** — `openmemory-py 1.3.2` (testing pending) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-27 - Mem0 BLOCKED (F-006), pivot to OpenMemory |
+| **Sentinel Audit** | 2026-01-28 - Kimi K2.5 audit: WATCH (llama.cpp blocked) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -29,6 +29,10 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — llama.cpp conversion BLOCKED (Issue #19127), wait 2-4 weeks.
+- **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
+- **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` installed, testing pending.
+- **2026-01-28 INT8 Deleted**: Freed 642GB `/nvme/models/deepseek-r1-int8/` — confirmed unusable per F-022.
 - **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. Total: 11.35 tok/s (+9.7% from 10.35 baseline).
 - **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
 - **2026-01-27 F-006 Mem0**: Docker image STILL arm64 only despite "resolved" issue. Pivoted to OpenMemory (CaviraOSS).
@@ -56,8 +60,8 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 **Monitor Commands:**
 ```bash
-# Download progress
-ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-int8/ && ls /nvme/models/deepseek-r1-int8/*.safetensors 2>/dev/null | wc -l"
+# Download progress (R1-0528 Q4_K_M)
+ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-0528-q4km/"
 
 # GPU status
 ssh omni@100.94.47.77 "nvidia-smi --query-gpu=memory.used,memory.total --format=csv"
@@ -120,23 +124,21 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 
 ---
 
-## Sentinel Audit 2026-01-27 Summary
+## Sentinel Audit 2026-01-28 Summary
 
-**Decision (2026-01-27):** MLA + KV Quant COMPLETE. 11.35 tok/s ACHIEVED.
+**Decision (2026-01-28):** R1-0528 benchmark prep. Kimi K2.5 = WATCH.
 
 | Finding | Status | Priority |
 |---------|--------|----------|
 | **11.35 tok/s baseline** | **ACHIEVED** ✅ | Production |
 | llama.cpp MLA (PR #19057) | **DEPLOYED** ✅ | Done |
 | KV cache quant (`q4_1`) | **DEPLOYED** ✅ | Done |
-| Driver 580.95.05 → 580.126.09 | **COMPLETE** ✅ (no perf gain) | Done |
-| ik_llama.cpp split mode graph | **BLOCKED** (F-024) - MoE unsupported | Done |
-| NVIDIA Dynamo v0.8.1 | **NOT VIABLE** (F-025) - datacenter-only | Done |
-| ExLlamaV3 | **NOT VIABLE** (F-026) - DeepSeek unsupported | Done |
-| 20 tok/s config | **IDENTIFIED** (S-014) - needs 2x PRO 6000 | Info |
-| KTransformers v0.5.1 | **DEFERRED** (F-027) - User decision: later | Future |
-| Mem0 amd64 (F-006) | **STILL BLOCKED** — Pivot to OpenMemory | In Progress |
-| DeepSeek-R1-0528 Q6_K | **DOWNLOADING** (~62GB / 564GB) | P3 |
+| OpenMemory SDK | **INSTALLED** ✅ (testing pending) | P1 |
+| DeepSeek-R1-0528 Q4_K_M | **DOWNLOADING** (~28GB / 409GB) | P2 |
+| Kimi K2.5 | **WATCH** — llama.cpp Issue #19127 | Monitor |
+| R1-0528 Q6_K | **FAILED** (OOM: 514GB > 377GB RAM) | Done |
+| INT8 Asset | **DELETED** — freed 642GB | Done |
+| KTransformers v0.5.1 | **DEFERRED** (F-027) | Future |
 | vLLM SM120 (Issue #26211) | Still BLOCKED | Monitor |
 
 **Full Report**: `docs/architecture/lessons-learned.md`
