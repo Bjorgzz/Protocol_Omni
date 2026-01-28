@@ -34,7 +34,9 @@ grep -E "tok/s|Generation" "$OPTIMIZED" | tail -5 || { rc=$?; [ $rc -eq 1 ] && e
 echo ""
 
 extract_gen_speed() {
-  grep "Generation:" "$1" 2>/dev/null | head -1 | sed -n 's/.*@ *\([0-9.]*\) *tok\/s.*/\1/p'
+  local line
+  line=$(grep -m1 "Generation:" "$1" 2>/dev/null) || true
+  echo "$line" | sed -n 's/.*@ *\([0-9.]*\) *tok\/s.*/\1/p'
 }
 
 BASE_GEN=$(extract_gen_speed "$BASELINE")
