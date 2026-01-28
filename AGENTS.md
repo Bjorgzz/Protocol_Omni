@@ -13,7 +13,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Phase** | STABLE - R1-0528 Production |
 | **Version** | v16.4.16 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (Iron Lung) ✅ |
-| **Baseline** | **11.20 tok/s** (R1-0528) — ~1% below R1's 11.35 (within variance) |
+| **Baseline** | **11.35 tok/s** (R1-0528 post-optimization) — +1.3% from 11.20 stock |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
@@ -21,7 +21,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-28 - Integration plan created: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2) |
+| **Sentinel Audit** | 2026-01-28 - 7 upgrades mapped (P0: llama.cpp b7857, MCP Apps; P1: Scout, BitNet; P2-3: 3 more) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -32,7 +32,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **2026-01-28 Performance Baseline**: Captured benchmark after session optimizations: 11.35 tok/s gen (+1.3% from 11.20 baseline), 23.14 tok/s prompt eval. CPU governor powersave→performance, GPU clocks locked 2100 MHz min. Created `benchmarks/` with scripts + systemd persistence. BIOS tuning pending (PBO/CO/FCLK).
 - **2026-01-28 RAM PMIC Lock**: SK Hynix HMCGY4MHBRB489N RDIMM has voltage locked at 1.1V (Min=Max=Configured). No EXPO profile. Running 6000 MT/s vs rated 6400 MT/s. Timing-only optimization possible, no voltage scaling.
 - **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2), Qwen3-Omni (P2), Moltbot (P3), NVIDIA 590.x (P3).
-- **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (~1% below R1's 11.35, within variance). Promoted for improved reasoning.
+- **2026-01-28 R1-0528 Production**: Initial stock benchmark 11.20 tok/s (before session optimizations). Promoted for improved reasoning.
 - **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
@@ -41,7 +41,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. R1 baseline: 11.35 tok/s (+9.7% from 10.35).
 - **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
 - **2026-01-27 F-006 Mem0**: Docker image STILL arm64 only despite "resolved" issue. Pivoted to OpenMemory (CaviraOSS).
-- **2026-01-27 Decision (Historical)**: 10.35 tok/s → 11.35 tok/s (R1). Now R1-0528 @ 11.20 tok/s is production.
+- **2026-01-27 Decision (Historical)**: 10.35 tok/s → 11.35 tok/s (R1). R1-0528 now production @ 11.35 tok/s (optimized).
 - **2026-01-27 KTransformers**: DEFERRED for later (F-027).
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
