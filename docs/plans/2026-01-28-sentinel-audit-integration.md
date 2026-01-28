@@ -317,15 +317,20 @@ moltbot-ui:
 
 ### Llama 4 Scout Sizing Analysis
 
-| Resource | Total | DeepSeek R1-0528 Consumes | Free for Scout | Scout Needs |
-|----------|-------|---------------------------|----------------|-------------|
-| GPU VRAM | 128GB (96+32) | 116GB (90+26) | **12GB** | ~60GB |
-| System RAM | 377GB | 377GB + 32GB swap | **0GB** | ~60GB |
+> **Note:** VRAM is NOT pooled across GPUs. Each GPU must fit its allocated layers.
+
+| Resource | Capacity | DeepSeek Consumes | Free | Scout Needs | Verdict |
+|----------|----------|-------------------|------|-------------|---------|
+| GPU0 (Blackwell) | 96 GB | 90 GB | 6 GB | ~45 GB (75% split) | **BLOCKED** |
+| GPU1 (5090) | 32 GB | 26 GB | 6 GB | ~15 GB (25% split) | **BLOCKED** |
+| System RAM | 377 GB | 377 GB | 0 GB | — | **FULL** |
+| NVMe Swap | 200 GB | 32 GB | 168 GB | — | Available but slow |
 
 **Math:**
-- Scout 109B at Q4_K_M ≈ 109B × 0.5 bytes/param = **~55GB** + KV cache overhead ≈ **60GB**
-- DeepSeek R1-0528 Q4_K_M = 409GB (377GB RAM + 32GB NVMe swap)
-- **Conclusion:** Scout cannot coexist with DeepSeek. Would require full model swap or API.
+- Scout 109B at Q4_K_M ≈ 109B × 0.5 bytes/param = **~55GB** + KV cache ≈ **60GB total**
+- With 75/25 tensor split: GPU0 needs ~45GB, GPU1 needs ~15GB
+- DeepSeek R1-0528 Q4_K_M = 409GB (377GB RAM + 32GB swap) — **RAM overcommitted**
+- **Conclusion:** Scout cannot coexist. No GPU has 45GB free; RAM at 0GB. API only.
 
 **No resurrection of blocked technologies.** All proposals either:
 1. Use proven engines (llama.cpp mainline)
