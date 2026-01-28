@@ -19,7 +19,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
-| **Memory Layer** | **INSTALLED** — `openmemory-py 1.3.2` (testing pending) |
+| **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
 | **Sentinel Audit** | 2026-01-28 - Integration plan created: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2) |
 | **Health Checks** | 12/14 containers healthy |
@@ -34,7 +34,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
-- **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` installed, testing pending.
+- **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` TESTED — add/search/delete work. Py 3.14 Pydantic warning (non-blocking).
 - **2026-01-28 INT8 Deleted**: Freed 642GB `/nvme/models/deepseek-r1-int8/` — confirmed unusable per F-022.
 - **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. R1 baseline: 11.35 tok/s (+9.7% from 10.35).
 - **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
@@ -137,7 +137,7 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 | **Disk Cleanup** | **COMPLETE** ✅ (37% used, 2.2TB free) | Done |
 | llama.cpp MLA (PR #19057) | **DEPLOYED** ✅ | Done |
 | KV cache quant (`q4_1`) | **DEPLOYED** ✅ | Done |
-| OpenMemory SDK | **INSTALLED** ✅ (testing pending) | P1 |
+| OpenMemory SDK | **TESTED** ✅ — add/search/delete work (Py 3.14 warning only) | Done |
 | Kimi K2.5 | **WATCH** — text-only GGUF works, vision blocked | Monitor |
 | KTransformers v0.5.1 | **DEFERRED** (F-027) | Future |
 | vLLM SM120 (Issue #26211) | Still BLOCKED | Monitor |
