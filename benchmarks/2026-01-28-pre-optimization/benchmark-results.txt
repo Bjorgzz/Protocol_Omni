@@ -1,0 +1,31 @@
+=== Baseline Benchmark Wed Jan 28 17:34:05 UTC 2026 ===
+
+Model: DeepSeek-R1-0528 Q4_K_M (671B parameters)
+llama.cpp: b7848 (68ac3acb4) with MLA + KV cache q4_1
+GPU Config: RTX 5090 (32GB) + RTX PRO 6000 (96GB)
+Tensor Split: 75/25
+Context: 4 slots @ 8192 tokens
+
+=== Short Prompt Test ===
+Run 1: Prompt 9 tok, Completion 64 tok, Total 73 tok
+Run 2: Prompt 9 tok, Completion 64 tok, Total 73 tok
+Run 3: Prompt 9 tok, Completion 64 tok, Total 73 tok
+
+=== Detailed Timings (Short Prompt) ===
+Prompt eval: 5 tokens @ 23.14 tok/s
+Generation:  83 tokens @ 11.35 tok/s
+
+=== Extended Benchmark (Larger Prompt) ===
+Prompt:     141 tokens @ 10.77 tok/s
+Generation: 128 tokens @ 10.89 tok/s
+
+=== BASELINE SUMMARY ===
++------------------+-------------+-------------+
+| Metric           | Short (5t)  | Long (141t) |
++------------------+-------------+-------------+
+| Prompt Eval      | 23.14 tok/s | 10.77 tok/s |
+| Generation       | 11.35 tok/s | 10.89 tok/s |
++------------------+-------------+-------------+
+
+Status: Pre-BIOS optimization baseline captured
+Next: Apply PBO + Curve Optimizer + Memory timings, re-benchmark

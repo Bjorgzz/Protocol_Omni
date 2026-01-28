@@ -1,0 +1,37 @@
+=== PRE-OPTIMIZATION BASELINE ===
+Date: 2026-01-28
+Purpose: Capture system state before BIOS tuning
+
+=== CPU Configuration ===
+Governor: performance (changed from powersave this session)
+Max Freq: 5.68 GHz (per scaling_max_freq)
+Cores: 192 (96C/192T AMD Threadripper PRO 9995WX)
+
+=== GPU Configuration ===
+GPU 0 (RTX 5090):     2092 MHz core, 810 MHz mem idle, 76W, 16°C
+GPU 1 (RTX PRO 6000): 2085 MHz core, 810 MHz mem idle, 22W, 25°C
+Clock Lock: 2100-3285 MHz (GPU 0), 2100-3090 MHz (GPU 1)
+Persistence Mode: Enabled
+
+=== Memory Configuration ===
+Speed: 6000 MT/s (rated 6400 MT/s - PMIC locked at 1.1V)
+Voltage: 1.1V (locked, no adjustment possible)
+Capacity: 384GB DDR5 ECC RDIMM (SK Hynix HMCGY4MHBRB489N)
+Channels: 8-channel (WRX90)
+
+=== Thermal State ===
+Coolant: 14.7°C
+CPU (Tctl): 21.9°C (limit: 95°C)
+GPU 0: 16°C
+GPU 1: 25°C
+
+=== Session Optimizations Applied ===
+1. CPU governor: powersave -> performance (+15-20% expected)
+2. GPU clocks: idle 180-375 MHz -> locked 2100 MHz minimum
+
+=== Pending BIOS Optimizations ===
+- PBO: PPT 700W, TDC 550A, EDC 700A
+- Curve Optimizer: All-Core -20
+- Max CPU Boost: +100 MHz
+- FCLK: 2000 MHz (1:1 with MCLK)
+- Memory Timings: tRFC 500, tREFI 49152, tRRDS/L 8, tFAW 32

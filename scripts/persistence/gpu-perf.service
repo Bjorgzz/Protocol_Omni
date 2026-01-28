@@ -1,0 +1,13 @@
+[Unit]
+Description=GPU Performance Optimization for AI Inference
+After=network.target nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi -pm 1
+ExecStart=/usr/bin/nvidia-smi -lgc 2100,3285 -i 0
+ExecStart=/usr/bin/nvidia-smi -lgc 2100,3090 -i 1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
