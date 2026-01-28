@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.15)
+# Protocol OMNI (v16.4.16)
 
-> **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 PRODUCTION
+> **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 PRODUCTION + PERF TUNING
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -11,7 +11,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | STABLE - R1-0528 Production |
-| **Version** | v16.4.15 |
+| **Version** | v16.4.16 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (Iron Lung) ✅ |
 | **Baseline** | **11.20 tok/s** (R1-0528) — ~1% below R1's 11.35 (within variance) |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
@@ -29,7 +29,9 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades to code: llama.cpp b7857, MCP Apps, Llama 4 Scout, BitNet, Qwen3-Omni, Moltbot, NVIDIA 590.x.
+- **2026-01-28 Performance Baseline**: Captured pre-optimization benchmark: 11.35 tok/s gen, 23.14 tok/s prompt eval. Created `benchmarks/` with scripts + systemd persistence services. CPU governor changed powersave→performance (+15-20%). GPU clocks locked 2100 MHz min. BIOS tuning pending (PBO/CO/FCLK).
+- **2026-01-28 RAM PMIC Lock**: SK Hynix HMCGY4MHBRB489N RDIMM has voltage locked at 1.1V (Min=Max=Configured). No EXPO profile. Running 6000 MT/s vs rated 6400 MT/s. Timing-only optimization possible, no voltage scaling.
+- **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades to code: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2).
 - **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (~1% below R1's 11.35, within variance). Promoted for improved reasoning.
 - **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
