@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.13)
+# Protocol OMNI (v16.4.14)
 
-> **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 BENCHMARK PREP
+> **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 PRODUCTION
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,16 +10,15 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | STABLE - R1-0528 Benchmark Prep |
-| **Version** | v16.4.13 |
-| **Active Op** | DeepSeek-R1-0528 Q4_K_M download (~64GB / 409GB) @ 142 MB/s |
-| **Disk** | 74% used (940GB free) — verified 2026-01-28 |
-| **Production** | **llama.cpp RUNNING** @ port 8000 (Iron Lung) ✅ |
-| **Baseline** | **11.35 tok/s ACHIEVED** — +9.7% total (MLA + KV quant q4_1) |
+| **Phase** | STABLE - R1-0528 Production |
+| **Version** | v16.4.14 |
+| **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (Iron Lung) ✅ |
+| **Baseline** | **11.20 tok/s** (R1-0528) — equivalent to R1 baseline |
+| **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
+| **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
-| **INT8 Asset** | **DELETED** — freed 642GB for R1-0528 download |
 | **Memory Layer** | **INSTALLED** — `openmemory-py 1.3.2` (testing pending) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
 | **Sentinel Audit** | 2026-01-28 - Kimi K2.5: WATCH (text-only GGUF exists, vision blocked) |
@@ -30,6 +29,8 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (equivalent to R1). Promoted to production Oracle.
+- **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
 - **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` installed, testing pending.
@@ -56,13 +57,13 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Server** | `omni@100.94.47.77` (Tailscale) | Password: ask user |
 | **Local IP** | `192.168.3.10` | Only from same LAN |
 | **llama.cpp** | `http://192.168.3.10:8000` | Iron Lung API |
-| **Container** | `ktransformers-sglang` | DEFERRED (F-027) — future KTransformers work |
-| **Container** | `deepseek-r1` | llama.cpp production |
+| **Container** | `deepseek-r1-0528` | R1-0528 production |
+| **Container** | `ktransformers-sglang` | DEFERRED (F-027) |
 
 **Monitor Commands:**
 ```bash
-# Download progress (R1-0528 Q4_K_M) — runs on remote
-ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-0528-q4km/"
+# Model inventory — runs on remote
+ssh omni@100.94.47.77 "du -sh /nvme/models/*/"
 
 # GPU status — runs on remote
 ssh omni@100.94.47.77 "nvidia-smi --query-gpu=memory.used,memory.total --format=csv"
@@ -127,18 +128,16 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 
 ## Sentinel Audit 2026-01-28 Summary
 
-**Decision (2026-01-28):** R1-0528 benchmark prep. Kimi K2.5 = WATCH.
+**Decision (2026-01-28):** R1-0528 promoted to production. Disk cleaned (1.6TB freed).
 
 | Finding | Status | Priority |
 |---------|--------|----------|
-| **11.35 tok/s baseline** | **ACHIEVED** ✅ | Production |
+| **R1-0528 Production** | **DEPLOYED** ✅ (11.20 tok/s) | Production |
+| **Disk Cleanup** | **COMPLETE** ✅ (37% used, 2.2TB free) | Done |
 | llama.cpp MLA (PR #19057) | **DEPLOYED** ✅ | Done |
 | KV cache quant (`q4_1`) | **DEPLOYED** ✅ | Done |
 | OpenMemory SDK | **INSTALLED** ✅ (testing pending) | P1 |
-| DeepSeek-R1-0528 Q4_K_M | **DOWNLOADING** (~28GB / 409GB) | P2 |
-| Kimi K2.5 | **WATCH** — llama.cpp Issue #19127 | Monitor |
-| R1-0528 Q6_K | **FAILED** (OOM: 514GB > 377GB RAM) | Done |
-| INT8 Asset | **DELETED** — freed 642GB | Done |
+| Kimi K2.5 | **WATCH** — text-only GGUF works, vision blocked | Monitor |
 | KTransformers v0.5.1 | **DEFERRED** (F-027) | Future |
 | vLLM SM120 (Issue #26211) | Still BLOCKED | Monitor |
 
