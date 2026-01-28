@@ -21,7 +21,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-28 - 7 upgrades mapped (P0: llama.cpp b7857, MCP Apps; P1: Scout, BitNet; P2-3: 3 more) |
+| **Sentinel Audit** | 2026-01-28 - 7 upgrades: P0 (llama.cpp, MCP Apps), P1 (Scout), P2 (BitNet, Qwen3-Omni), P3 (Moltbot, NVIDIA 590.x) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -41,7 +41,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. R1 baseline: 11.35 tok/s (+9.7% from 10.35).
 - **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
 - **2026-01-27 F-006 Mem0**: Docker image STILL arm64 only despite "resolved" issue. Pivoted to OpenMemory (CaviraOSS).
-- **2026-01-27 Decision (Historical)**: 10.35 tok/s → 11.35 tok/s (R1). R1-0528 now production @ 11.35 tok/s (optimized).
+- **2026-01-27 Decision (Historical)**: 10.35 tok/s → 11.35 tok/s (R1). R1-0528 promoted at 11.20 tok/s stock; later optimized to 11.35 (2026-01-28).
 - **2026-01-27 KTransformers**: DEFERRED for later (F-027).
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
