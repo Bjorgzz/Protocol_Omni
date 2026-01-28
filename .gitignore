@@ -51,3 +51,4 @@ node_modules/
 # SQLite WAL files (transient state)
 .brv/blobs/*.db-wal
 .brv/blobs/*.db-shm
+openmemory.db
