@@ -30,6 +30,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 ## Lessons Learned (Phase 5-6)
 
 - **2026-01-28 Performance Baseline**: Captured benchmark after session optimizations: 11.35 tok/s gen (+1.3% from 11.20 baseline), 23.14 tok/s prompt eval. CPU governor powersave→performance, GPU clocks locked 2100 MHz min. Created `benchmarks/` with scripts + systemd persistence. BIOS tuning pending (PBO/CO/FCLK).
+- **2026-01-28 Redfish Limitation**: AMI Redfish on ASUS WRX90 exposes 1298 CBS attributes but ASUS-specific menus (AI Tweaker, ASUS OC) may not be visible. Memory timing controls all "Auto" — shown values may be SPD/trained, not overrides. Verify via BMC web UI or BIOS directly before assuming state.
 - **2026-01-28 RAM PMIC Lock**: SK Hynix HMCGY4MHBRB489N RDIMM has voltage locked at 1.1V (Min=Max=Configured). No EXPO profile. Running 6000 MT/s vs rated 6400 MT/s. Timing-only optimization possible, no voltage scaling.
 - **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2), Qwen3-Omni (P2), Moltbot (P3), NVIDIA 590.x (P3).
 - **2026-01-28 R1-0528 Production**: Initial stock benchmark 11.20 tok/s (before session optimizations). Promoted for improved reasoning.
