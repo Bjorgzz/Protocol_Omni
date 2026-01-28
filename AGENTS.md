@@ -1,4 +1,4 @@
-# Protocol OMNI (v16.4.14)
+# Protocol OMNI (v16.4.15)
 
 > **Last Updated**: 2026-01-28 | **Phase**: STABLE | **Status**: R1-0528 PRODUCTION
 
@@ -11,9 +11,9 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | STABLE - R1-0528 Production |
-| **Version** | v16.4.14 |
+| **Version** | v16.4.15 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (Iron Lung) ✅ |
-| **Baseline** | **11.20 tok/s** (R1-0528) — equivalent to R1 baseline |
+| **Baseline** | **11.20 tok/s** (R1-0528) — ~1% below R1's 11.35 (within variance) |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
@@ -21,7 +21,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **INSTALLED** — `openmemory-py 1.3.2` (testing pending) |
 | **Skill Protocol** | **ACTIVE** - Agents must check `skills/` before acting. |
-| **Sentinel Audit** | 2026-01-28 - Kimi K2.5: WATCH (text-only GGUF exists, vision blocked) |
+| **Sentinel Audit** | 2026-01-28 - Integration plan created: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 
@@ -29,7 +29,8 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (equivalent to R1). Promoted to production Oracle.
+- **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades to code: llama.cpp b7857, MCP Apps, Llama 4 Scout, BitNet, Qwen3-Omni, Moltbot, NVIDIA 590.x.
+- **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (~1% below R1's 11.35, within variance). Promoted for improved reasoning.
 - **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
