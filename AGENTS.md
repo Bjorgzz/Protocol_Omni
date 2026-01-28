@@ -104,7 +104,7 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 | Anti-Pattern | Consequence | Correct Behavior |
 |--------------|-------------|------------------|
 | "I'll sync later" | Context lost on session end | Sync NOW, not later |
-| Assume server state | Stale/wrong info | SSH or MCP to verify |
+| Assume server state | Stale/wrong info | Verify via `bash` ssh (prefer) or SSH MCP for multi-step/SFTP |
 | Skip verification | Broken code merged | Run lint/test/typecheck |
 | Guess current date | Time-sensitive errors | Check `<verdent-env>` |
 
