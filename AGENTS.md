@@ -29,9 +29,9 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-28 Performance Baseline**: Captured pre-optimization benchmark: 11.35 tok/s gen, 23.14 tok/s prompt eval. Created `benchmarks/` with scripts + systemd persistence services. CPU governor changed powersave→performance (+15-20%). GPU clocks locked 2100 MHz min. BIOS tuning pending (PBO/CO/FCLK).
+- **2026-01-28 Performance Baseline**: Captured benchmark after session optimizations: 11.35 tok/s gen (+1.3% from 11.20 baseline), 23.14 tok/s prompt eval. CPU governor powersave→performance, GPU clocks locked 2100 MHz min. Created `benchmarks/` with scripts + systemd persistence. BIOS tuning pending (PBO/CO/FCLK).
 - **2026-01-28 RAM PMIC Lock**: SK Hynix HMCGY4MHBRB489N RDIMM has voltage locked at 1.1V (Min=Max=Configured). No EXPO profile. Running 6000 MT/s vs rated 6400 MT/s. Timing-only optimization possible, no voltage scaling.
-- **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades to code: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2).
+- **2026-01-28 Sentinel Integration Plan**: Created `docs/plans/2026-01-28-sentinel-audit-integration.md`. Mapped 7 upgrades: llama.cpp b7857 (P0), MCP Apps (P0), Llama 4 Scout (P1), BitNet (P2), Qwen3-Omni (P2), Moltbot (P3), NVIDIA 590.x (P3).
 - **2026-01-28 R1-0528 Production**: Benchmarked 11.20 tok/s (~1% below R1's 11.35, within variance). Promoted for improved reasoning.
 - **2026-01-28 Disk Cleanup**: Deleted V3.2 BF16/DQ3 (940GB), R1 HF (642GB), broken cpu-int8 (11GB). Freed 1.6TB → 37% disk.
 - **2026-01-28 Kimi K2.5 Audit**: WATCH verdict — text-only GGUF at `AesSedai/Kimi-K2.5` (~556GB Q4_X), vision BLOCKED (Issue #19127).
