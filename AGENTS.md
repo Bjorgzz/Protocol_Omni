@@ -35,10 +35,10 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **2026-01-28 R1-0528 Q6_K OOM**: 514GB > 377GB RAM. Switched to Q4_K_M (409GB fits with swap).
 - **2026-01-28 OpenMemory SDK**: `openmemory-py 1.3.2` installed, testing pending.
 - **2026-01-28 INT8 Deleted**: Freed 642GB `/nvme/models/deepseek-r1-int8/` — confirmed unusable per F-022.
-- **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. Total: 11.35 tok/s (+9.7% from 10.35 baseline).
+- **2026-01-27 KV Quant**: Added `--cache-type-k q4_1` for additional 7.3% speedup. R1 baseline: 11.35 tok/s (+9.7% from 10.35).
 - **2026-01-27 MLA Upgrade**: llama.cpp upgraded to b7848 (`68ac3acb4`). PR #19057 + #19067 merged. 10.60 tok/s achieved (+2.4%).
 - **2026-01-27 F-006 Mem0**: Docker image STILL arm64 only despite "resolved" issue. Pivoted to OpenMemory (CaviraOSS).
-- **2026-01-27 Decision (Historical)**: 10.35 tok/s baseline was accepted pre-MLA. Now superseded by 11.35 tok/s.
+- **2026-01-27 Decision (Historical)**: 10.35 tok/s → 11.35 tok/s (R1). Now R1-0528 @ 11.20 tok/s is production.
 - **2026-01-27 KTransformers**: DEFERRED for later (F-027).
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
