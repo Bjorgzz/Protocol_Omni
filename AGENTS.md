@@ -59,15 +59,15 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Container** | `ktransformers-sglang` | DEFERRED (F-027) — future KTransformers work |
 | **Container** | `deepseek-r1` | llama.cpp production |
 
-**Monitor Commands (run from host, NOT inside containers):**
+**Monitor Commands:**
 ```bash
-# Download progress (R1-0528 Q4_K_M)
+# Download progress (R1-0528 Q4_K_M) — runs on remote
 ssh omni@100.94.47.77 "du -sh /nvme/models/deepseek-r1-0528-q4km/"
 
-# GPU status
+# GPU status — runs on remote
 ssh omni@100.94.47.77 "nvidia-smi --query-gpu=memory.used,memory.total --format=csv"
 
-# Iron Lung health (host curl OK; use wget/python inside containers per F-021)
+# Iron Lung health — runs locally (host curl OK; use wget/python inside containers per F-021)
 curl http://192.168.3.10:8000/health
 ```
 
