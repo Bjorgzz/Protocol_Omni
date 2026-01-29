@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.20)
+# Protocol OMNI (v16.4.21)
 
-> **Last Updated**: 2026-01-29 | **Phase**: OPTIMIZATION | **Status**: AI THROUGHPUT TUNING | Operation Velocity v3 NUCLEAR
+> **Last Updated**: 2026-01-30 | **Phase**: OPTIMIZATION | **Status**: BLACKWELL COMPAT ISSUE | Operation Velocity v3 BLOCKED
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,17 +10,17 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | OPTIMIZATION - AI Throughput Tuning |
-| **Version** | v16.4.20 |
-| **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (Iron Lung) ✅ |
-| **Baseline** | **11.35 tok/s** → **Target 13.5-14.5 tok/s** (+19-28% via AI optimization) |
-| **Op Velocity** | **v3 NUCLEAR READY** — `docs/plans/2026-01-29-operation-velocity-v3-nuclear.md` |
+| **Phase** | OPTIMIZATION - Blackwell Compat Blocked |
+| **Version** | v16.4.21 |
+| **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (degraded) ⚠️ |
+| **Current** | **9.01 tok/s** (down from 11.35 baseline due to F-030) |
+| **Op Velocity** | **v3 BLOCKED** — Blackwell SM120 lacks FA + KV quant support |
 | **PBO Status** | **ENABLED** (5.45 GHz confirmed. ✅) |
 | **SecureBoot** | **DISABLED** (Restored via Redfish + MOK. ✅) |
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
-| **llama.cpp** | Build b7848 (`68ac3acb4`) with MLA + V-less cache + `--cache-type-k q4_1` |
+| **llama.cpp** | Build b7869 — **NO Flash Attention, NO KV quant** (Blackwell workaround) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |
@@ -33,6 +33,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-01-30 Blackwell Compatibility (F-030)**: NVIDIA Blackwell GPUs (PRO 6000 + RTX 5090, compute 12.0/SM120) have CRITICAL compatibility issues with llama.cpp b7869: (1) **Flash Attention crashes** — `sched_reserve: layer 0 is assigned to device CUDA0 but the Flash Attention tensor is assigned to device CPU`, (2) **KV cache q4_1 crashes** — `ggml_cuda_cpy: unsupported type combination (q4_1 to q4_1)`. Workaround: run with `--flash-attn off` and remove `--cache-type-k q4_1`. Result: **9.01 tok/s** (down 20% from 11.35 baseline), prompt eval **0.10 tok/s** (down 99.6% from 23.14). BIOS optimizations (DF C-States, APBDIS, IOMMU, ACS, PBO) applied but cannot compensate for missing FA/KV quant. **Blocker**: Wait for llama.cpp Blackwell support (CUDA 12.0 arch in `ARCHS = 500,610,700,750,800,860,890` does NOT include 120).
 - **2026-01-29 EFI Shell Script (S-018)**: Created `tools/bios/nuclear_settings.nsh` (107 lines) for AI-optimized BIOS settings via EFI Shell. Code review fixes: (1) PPT/TDP write all 4 bytes to avoid partial updates, (2) `.nsh` extension + `rem` comments for EFI Shell compatibility, (3) explicit GUID on all commands (no tool defaults), (4) removed incompatible grubx64 reference. Archived 150 KVM screenshots to `docs/images/kvm-sessions/2026-01-29-bios-config/`. Cleaned unused tools.
 - **2026-01-29 BIOS IFR Extraction (S-017)**: Extracted full IFR database from ASUS WRX90 BIOS 1203 (33,006 lines JSON, 2011 settings vs 1298 Redfish-exposed). Tool: UEFIExtract NE A68 (Universal-IFR-Extractor failed "Unknown protocol" on ASUS CAP format). Key VarStores: `Setup` (VarID 5), `AmdSetupSHP` (VarID 16 - Zen5 TR 9000 CBS settings). Critical offsets: PPT (1049), DF C-States (1069), IOMMU (887), ACS (833). tREFI NOT in IFR - must be set manually via BIOS UI. Analysis: `tools/bios/wrx90_ai_settings_analysis.md`, Full IFR: `tools/bios/wrx90_ifr_full.json`.
 - **2026-01-29 AI Optimization Approach (S-016)**: LLM inference is **memory bandwidth bound**, NOT latency bound. Key BIOS settings for AI throughput: **DF C-States=Disabled**, **APBDIS=1** (Data Fabric P-states kill bandwidth), **IOMMU=Disabled** + **ACS=Disabled** (enables GPU P2P), **Memory Interleaving=Channel** + **Size=2KB**, **tREFI=65535** (user-proven, +15-20% effective bandwidth). llama.cpp params: `--tensor-split 65,35` (bandwidth-weighted, not VRAM-weighted), `--batch-size 4096`, `--no-mmap`. Full plan: `docs/plans/2026-01-29-operation-velocity-v3-nuclear.md`.
@@ -60,6 +61,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
 - **F-027**: KTransformers v0.5.1 has ABI mismatch + sched_ext chain. DEFERRED (4-8h fix, ~10-30% gain).
+- **F-030**: Blackwell SM120 (compute 12.0) not in llama.cpp CUDA archs. FA + KV quant unsupported. **BLOCKER** for perf targets.
 - **S-014**: 20 tok/s requires 2x PRO 6000 symmetric (~$12K upgrade path).
 - **Redfish available**: Use `mcp_redfish_*` tools for remote BMC control instead of waiting for physical access.
 - **GGUF streaming wins**: llama.cpp streams layers, never needs full model in RAM.
