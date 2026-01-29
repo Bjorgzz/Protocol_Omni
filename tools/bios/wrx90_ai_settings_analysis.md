@@ -65,7 +65,9 @@
 
 ## EFI Shell Commands for AI Optimization
 
-Using setup_var.efi with VarStore GUID: 3A997502-647A-4C82-998E-52EF9486A247 (AmdSetupSHP)
+**VarStores used:**
+- **AmdSetupSHP** (GUID: `3A997502-647A-4C82-998E-52EF9486A247`) — AMD CBS settings (PPT, TDP, C-States, prefetchers)
+- **Setup** (GUID: `EC87D643-EBA4-4BB5-A1E5-3F3E36B20DA9`) — Platform settings (Above 4G Decoding)
 
 **Full batch script**: `tools/bios/nuclear_settings.nsh` (EFI Shell format)
 
