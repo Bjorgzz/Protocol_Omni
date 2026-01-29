@@ -1,0 +1,15 @@
+Type: File
+Subtype: Freeform
+Text: PEI apriori file
+Fixed: No
+Offset: 78h
+File GUID: 1B45CC0A-156A-428A-AF62-49864DA0E6E6
+Type: 02h
+Attributes: 00h
+Full size: 18Ch (396)
+Header size: 18h (24)
+Body size: 174h (372)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 57h, valid
+Data checksum: AAh, valid

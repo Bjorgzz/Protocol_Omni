@@ -1,0 +1,9 @@
+Type: Section
+Subtype: Raw
+Fixed: No
+Base: 10010A0h
+Offset: 28h
+Type: 19h
+Full size: Ch (12)
+Header size: 4h (4)
+Body size: 8h (8)

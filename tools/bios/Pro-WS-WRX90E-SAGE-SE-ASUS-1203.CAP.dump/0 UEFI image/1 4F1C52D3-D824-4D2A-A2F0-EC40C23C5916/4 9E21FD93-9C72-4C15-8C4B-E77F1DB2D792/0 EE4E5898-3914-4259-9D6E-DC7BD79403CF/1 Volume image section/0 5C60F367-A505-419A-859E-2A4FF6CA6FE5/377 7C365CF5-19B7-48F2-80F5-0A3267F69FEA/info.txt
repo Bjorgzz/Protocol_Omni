@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: DB3920h
+File GUID: 7C365CF5-19B7-48F2-80F5-0A3267F69FEA
+Type: 0Ah
+Attributes: 00h
+Full size: 111676h (1119862)
+Header size: 18h (24)
+Body size: 11165Eh (1119838)
+Tail size: 0h (0)
+State: F8h
+Header checksum: B5h, valid
+Data checksum: AAh, valid

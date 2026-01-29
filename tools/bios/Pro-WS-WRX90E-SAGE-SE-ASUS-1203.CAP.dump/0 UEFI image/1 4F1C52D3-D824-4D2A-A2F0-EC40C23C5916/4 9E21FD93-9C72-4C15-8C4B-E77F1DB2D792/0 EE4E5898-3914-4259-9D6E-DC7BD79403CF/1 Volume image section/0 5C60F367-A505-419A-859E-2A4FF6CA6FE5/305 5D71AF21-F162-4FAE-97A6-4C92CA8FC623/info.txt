@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BFB230h
+File GUID: 5D71AF21-F162-4FAE-97A6-4C92CA8FC623
+Type: 0Ah
+Attributes: 00h
+Full size: 74AEh (29870)
+Header size: 18h (24)
+Body size: 7496h (29846)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 89h, valid
+Data checksum: AAh, valid

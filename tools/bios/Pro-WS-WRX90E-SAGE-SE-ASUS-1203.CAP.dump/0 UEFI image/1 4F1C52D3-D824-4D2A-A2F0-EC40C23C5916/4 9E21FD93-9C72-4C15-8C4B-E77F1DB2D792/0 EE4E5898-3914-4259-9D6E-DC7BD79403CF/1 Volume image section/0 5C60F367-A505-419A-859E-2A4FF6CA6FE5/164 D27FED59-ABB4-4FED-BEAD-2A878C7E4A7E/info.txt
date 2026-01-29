@@ -1,0 +1,14 @@
+Type: File
+Subtype: DXE driver
+Fixed: No
+Offset: 7249E8h
+File GUID: D27FED59-ABB4-4FED-BEAD-2A878C7E4A7E
+Type: 07h
+Attributes: 00h
+Full size: 1652h (5714)
+Header size: 18h (24)
+Body size: 163Ah (5690)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 71h, valid
+Data checksum: AAh, valid

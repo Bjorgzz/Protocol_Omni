@@ -1,0 +1,14 @@
+Type: File
+Subtype: Application
+Fixed: No
+Offset: 1003140h
+File GUID: 11CB55C3-089D-4FF1-8B86-4745AB2FB501
+Type: 09h
+Attributes: 00h
+Full size: 3A2Ah (14890)
+Header size: 18h (24)
+Body size: 3A12h (14866)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 8Dh, valid
+Data checksum: AAh, valid

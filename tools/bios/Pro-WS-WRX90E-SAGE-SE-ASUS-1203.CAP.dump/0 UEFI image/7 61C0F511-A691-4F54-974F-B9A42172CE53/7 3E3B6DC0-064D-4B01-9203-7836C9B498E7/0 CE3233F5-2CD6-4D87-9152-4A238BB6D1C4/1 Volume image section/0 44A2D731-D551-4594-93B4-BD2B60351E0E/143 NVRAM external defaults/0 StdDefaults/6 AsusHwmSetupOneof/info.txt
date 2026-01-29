@@ -1,0 +1,12 @@
+Type: NVAR entry
+Subtype: Full
+Text: AsusHwmSetupOneof
+Fixed: Yes
+Offset: 317h
+Variable GUID: EC87D643-EBA4-4BB5-A1E5-3F3E36B20DA9
+GUID index: 0
+Full size: 4Fh (79)
+Header size: 1Dh (29)
+Body size: 32h (50)
+Tail size: 0h (0)
+Attributes: 83h (Runtime, AsciiName, Valid)

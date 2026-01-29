@@ -1,0 +1,12 @@
+Type: NVAR entry
+Subtype: Full
+Text: NV_SIO0_LD2
+Fixed: Yes
+Offset: 5B0h
+Variable GUID: 560BF58A-1E0D-4D7E-953F-2980A261E031
+GUID index: 8
+Full size: 1Ah (26)
+Header size: 17h (23)
+Body size: 3h (3)
+Tail size: 0h (0)
+Attributes: 83h (Runtime, AsciiName, Valid)

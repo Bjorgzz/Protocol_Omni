@@ -1,0 +1,12 @@
+Type: Section
+Subtype: DXE dependency
+Fixed: No
+Base: 10D5F58h
+Offset: 20h
+Type: 13h
+Full size: 6h (6)
+Header size: 4h (4)
+Body size: 2h (2)
+Parsed expression:
+TRUE
+END

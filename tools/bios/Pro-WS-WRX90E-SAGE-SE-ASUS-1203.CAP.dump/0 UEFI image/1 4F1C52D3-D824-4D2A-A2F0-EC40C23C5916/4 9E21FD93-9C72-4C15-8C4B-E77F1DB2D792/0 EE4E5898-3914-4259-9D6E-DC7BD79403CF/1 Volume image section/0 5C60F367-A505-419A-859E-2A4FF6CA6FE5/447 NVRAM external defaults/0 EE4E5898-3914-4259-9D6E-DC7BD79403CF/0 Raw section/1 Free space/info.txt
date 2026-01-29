@@ -1,0 +1,5 @@
+Type: Free space
+Subtype: 
+Fixed: Yes
+Offset: 5134h
+Full size: 10h (16)

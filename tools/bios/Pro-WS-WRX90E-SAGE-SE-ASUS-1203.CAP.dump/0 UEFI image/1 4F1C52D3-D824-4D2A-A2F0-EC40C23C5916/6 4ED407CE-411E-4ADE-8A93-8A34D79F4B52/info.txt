@@ -1,0 +1,15 @@
+Type: File
+Subtype: Raw
+Fixed: No
+Base: 151FB10h
+Offset: 51EB10h
+File GUID: 4ED407CE-411E-4ADE-8A93-8A34D79F4B52
+Type: 01h
+Attributes: 00h
+Full size: 9E50h (40528)
+Header size: 18h (24)
+Body size: 9E38h (40504)
+Tail size: 0h (0)
+State: F8h
+Header checksum: A5h, valid
+Data checksum: AAh, valid

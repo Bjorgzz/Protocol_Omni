@@ -1,0 +1,14 @@
+Type: File
+Subtype: PEI module
+Fixed: No
+Offset: 27DB0h
+File GUID: AE265864-CF5D-41A8-913D-71C155E76442
+Type: 06h
+Attributes: 00h
+Full size: BAAh (2986)
+Header size: 18h (24)
+Body size: B92h (2962)
+Tail size: 0h (0)
+State: F8h
+Header checksum: BEh, valid
+Data checksum: AAh, valid

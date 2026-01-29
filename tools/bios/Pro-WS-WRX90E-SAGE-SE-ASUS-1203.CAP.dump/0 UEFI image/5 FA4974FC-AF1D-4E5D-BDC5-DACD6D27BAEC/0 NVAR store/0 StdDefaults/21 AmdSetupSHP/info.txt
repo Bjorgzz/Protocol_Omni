@@ -1,0 +1,13 @@
+Type: NVAR entry
+Subtype: Full
+Text: AmdSetupSHP
+Fixed: Yes
+Base: 1BE4C2Ch
+Offset: 3B9Ch
+Variable GUID: 3A997502-647A-4C82-998E-52EF9486A247
+GUID index: 13
+Full size: 99Dh (2461)
+Header size: 17h (23)
+Body size: 986h (2438)
+Tail size: 0h (0)
+Attributes: 83h (Runtime, AsciiName, Valid)

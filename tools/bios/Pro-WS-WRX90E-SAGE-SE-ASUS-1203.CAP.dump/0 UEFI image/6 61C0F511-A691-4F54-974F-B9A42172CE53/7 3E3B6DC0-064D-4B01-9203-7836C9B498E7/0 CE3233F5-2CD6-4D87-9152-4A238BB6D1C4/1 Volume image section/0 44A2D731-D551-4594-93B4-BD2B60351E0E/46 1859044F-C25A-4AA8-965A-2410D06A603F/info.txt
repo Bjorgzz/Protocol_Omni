@@ -1,0 +1,14 @@
+Type: File
+Subtype: PEI module
+Fixed: No
+Offset: CC780h
+File GUID: 1859044F-C25A-4AA8-965A-2410D06A603F
+Type: 06h
+Attributes: 00h
+Full size: 16CAh (5834)
+Header size: 18h (24)
+Body size: 16B2h (5810)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 4Bh, valid
+Data checksum: AAh, valid

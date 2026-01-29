@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BC3758h
+File GUID: 391626DB-3CEC-4339-A3D6-9CDFF4690E12
+Type: 0Ah
+Attributes: 00h
+Full size: 4A66h (19046)
+Header size: 18h (24)
+Body size: 4A4Eh (19022)
+Tail size: 0h (0)
+State: F8h
+Header checksum: E1h, valid
+Data checksum: AAh, valid

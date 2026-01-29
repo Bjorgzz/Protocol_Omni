@@ -1,0 +1,12 @@
+Type: NVAR entry
+Subtype: Full
+Text: AmdSetupSTP
+Fixed: Yes
+Offset: 4539h
+Variable GUID: 3A997502-647A-4C82-998E-52EF9486A247
+GUID index: 13
+Full size: 702h (1794)
+Header size: 17h (23)
+Body size: 6EBh (1771)
+Tail size: 0h (0)
+Attributes: 83h (Runtime, AsciiName, Valid)

@@ -1,0 +1,5 @@
+Type: Startup AP data
+Subtype: X86 128K
+Fixed: Yes
+Offset: 456D10h
+Full size: C68h (3176)

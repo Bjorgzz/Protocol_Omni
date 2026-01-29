@@ -1,0 +1,15 @@
+Type: Section
+Subtype: DXE dependency
+Fixed: No
+Offset: 18h
+Type: 13h
+Full size: 3Ah (58)
+Header size: 4h (4)
+Body size: 36h (54)
+Parsed expression:
+PUSH 0FD96974-23AA-4CDC-B9CB-98D17750322A
+PUSH 33381F15-15ED-467A-A6C9-CC1B86CAD8D8
+PUSH 13A3F0F6-264A-3EF0-F2E0-DEC512342F34
+AND
+AND
+END

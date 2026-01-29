@@ -1,0 +1,14 @@
+Type: File
+Subtype: DXE driver
+Fixed: No
+Offset: 2FB28h
+File GUID: 9B680FCE-AD6B-4F3A-B60B-F59899003443
+Type: 07h
+Attributes: 00h
+Full size: AC42h (44098)
+Header size: 18h (24)
+Body size: AC2Ah (44074)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 2Ch, valid
+Data checksum: AAh, valid

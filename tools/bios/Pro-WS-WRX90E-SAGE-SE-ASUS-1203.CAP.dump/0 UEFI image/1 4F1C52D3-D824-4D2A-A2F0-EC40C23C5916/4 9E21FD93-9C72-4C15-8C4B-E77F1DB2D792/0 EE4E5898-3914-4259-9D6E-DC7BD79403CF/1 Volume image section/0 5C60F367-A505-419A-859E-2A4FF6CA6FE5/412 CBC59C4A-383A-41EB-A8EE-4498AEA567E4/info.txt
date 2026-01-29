@@ -1,0 +1,14 @@
+Type: File
+Subtype: DXE driver
+Fixed: No
+Offset: 108B120h
+File GUID: CBC59C4A-383A-41EB-A8EE-4498AEA567E4
+Type: 07h
+Attributes: 00h
+Full size: 7242h (29250)
+Header size: 18h (24)
+Body size: 722Ah (29226)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 21h, valid
+Data checksum: AAh, valid

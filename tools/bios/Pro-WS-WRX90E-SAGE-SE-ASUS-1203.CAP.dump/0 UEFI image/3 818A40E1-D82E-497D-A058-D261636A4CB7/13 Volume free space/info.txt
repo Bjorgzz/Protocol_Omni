@@ -1,0 +1,6 @@
+Type: Free space
+Subtype: 
+Fixed: No
+Base: 1B99B78h
+Offset: 18B78h
+Full size: 27488h (160904)

@@ -1,0 +1,14 @@
+Type: File
+Subtype: DXE driver
+Fixed: No
+Offset: DA230h
+File GUID: BC6102DD-3CC7-4B86-9A2C-4E125CABDF3A
+Type: 07h
+Attributes: 00h
+Full size: C49Ah (50330)
+Header size: 18h (24)
+Body size: C482h (50306)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 85h, valid
+Data checksum: AAh, valid

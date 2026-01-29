@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: CA5288h
+File GUID: B54299AD-B521-4BB8-A361-689249FE72B9
+Type: 0Ah
+Attributes: 00h
+Full size: BCE2h (48354)
+Header size: 18h (24)
+Body size: BCCAh (48330)
+Tail size: 0h (0)
+State: F8h
+Header checksum: D2h, valid
+Data checksum: AAh, valid

@@ -1,0 +1,15 @@
+Type: File
+Subtype: Volume image
+Fixed: No
+Base: 10D5F38h
+Offset: D4F38h
+File GUID: 1DF36FF9-C7EA-47A3-BD5B-426C250DB776
+Type: 0Bh
+Attributes: 00h
+Full size: 13CF0h (81136)
+Header size: 18h (24)
+Body size: 13CD8h (81112)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 90h, valid
+Data checksum: AAh, valid

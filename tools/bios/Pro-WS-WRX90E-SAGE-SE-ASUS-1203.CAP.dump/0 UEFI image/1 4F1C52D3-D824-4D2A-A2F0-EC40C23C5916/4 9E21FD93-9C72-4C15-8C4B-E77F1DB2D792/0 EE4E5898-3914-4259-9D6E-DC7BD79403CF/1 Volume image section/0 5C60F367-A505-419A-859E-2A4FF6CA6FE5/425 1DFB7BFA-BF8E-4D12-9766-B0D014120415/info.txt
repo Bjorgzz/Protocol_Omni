@@ -1,0 +1,14 @@
+Type: File
+Subtype: DXE driver
+Fixed: No
+Offset: 10F5868h
+File GUID: 1DFB7BFA-BF8E-4D12-9766-B0D014120415
+Type: 07h
+Attributes: 00h
+Full size: C42h (3138)
+Header size: 18h (24)
+Body size: C2Ah (3114)
+Tail size: 0h (0)
+State: F8h
+Header checksum: B6h, valid
+Data checksum: AAh, valid

@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BE2228h
+File GUID: 395B0181-C9B9-4E2E-A82E-6B0D027119F9
+Type: 0Ah
+Attributes: 00h
+Full size: 2EAEh (11950)
+Header size: 18h (24)
+Body size: 2E96h (11926)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 33h, valid
+Data checksum: AAh, valid

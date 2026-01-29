@@ -1,0 +1,15 @@
+Type: File
+Subtype: Freeform
+Fixed: No
+Base: 1B860D8h
+Offset: 50D8h
+File GUID: 43856DB2-6DDC-45AF-A500-660E951D36C8
+Type: 02h
+Attributes: 00h
+Full size: 64F4h (25844)
+Header size: 18h (24)
+Body size: 64DCh (25820)
+Tail size: 0h (0)
+State: F8h
+Header checksum: B9h, valid
+Data checksum: AAh, valid

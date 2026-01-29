@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: C0BA20h
+File GUID: CBB2E6A2-C6F2-4D68-A75F-AE621565C736
+Type: 0Ah
+Attributes: 00h
+Full size: 168Ah (5770)
+Header size: 18h (24)
+Body size: 1672h (5746)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 57h, valid
+Data checksum: AAh, valid

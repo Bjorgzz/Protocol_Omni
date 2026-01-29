@@ -1,0 +1,15 @@
+Type: File
+Subtype: Freeform
+Text: AMITSESetupData
+Fixed: No
+Offset: 1248178h
+File GUID: FE612B72-203C-47B1-8560-A66D946EB371
+Type: 02h
+Attributes: 00h
+Full size: DAF8h (56056)
+Header size: 18h (24)
+Body size: DAE0h (56032)
+Tail size: 0h (0)
+State: F8h
+Header checksum: BEh, valid
+Data checksum: AAh, valid

@@ -1,0 +1,6 @@
+Type: Free space
+Subtype: 
+Fixed: Yes
+Base: 1BE60C0h
+Offset: 5030h
+Full size: 10h (16)

@@ -1,0 +1,6 @@
+Type: Free space
+Subtype: 
+Fixed: No
+Base: 1FF1058h
+Offset: 1F0058h
+Full size: FFA8h (65448)

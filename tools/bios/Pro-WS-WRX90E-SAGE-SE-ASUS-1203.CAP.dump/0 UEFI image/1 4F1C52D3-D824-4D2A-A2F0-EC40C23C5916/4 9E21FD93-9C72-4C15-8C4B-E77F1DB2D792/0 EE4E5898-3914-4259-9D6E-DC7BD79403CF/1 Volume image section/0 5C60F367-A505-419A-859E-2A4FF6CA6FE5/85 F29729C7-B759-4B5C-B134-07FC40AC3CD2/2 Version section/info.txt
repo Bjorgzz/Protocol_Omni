@@ -1,0 +1,10 @@
+Type: Section
+Subtype: Version
+Fixed: No
+Offset: 53C08h
+Type: 14h
+Full size: 1Eh (30)
+Header size: 6h (6)
+Body size: 18h (24)
+Build number: 0
+Version string: 9.03.02.219

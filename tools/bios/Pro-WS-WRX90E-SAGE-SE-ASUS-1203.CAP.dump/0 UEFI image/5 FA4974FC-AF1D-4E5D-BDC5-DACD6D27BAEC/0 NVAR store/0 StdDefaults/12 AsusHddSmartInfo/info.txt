@@ -1,0 +1,13 @@
+Type: NVAR entry
+Subtype: Full
+Text: AsusHddSmartInfo
+Fixed: Yes
+Base: 1BE1622h
+Offset: 592h
+Variable GUID: A6F44860-B2E8-4FDA-BD45-78368994B6AE
+GUID index: 7
+Full size: 1Eh (30)
+Header size: 1Ch (28)
+Body size: 2h (2)
+Tail size: 0h (0)
+Attributes: 83h (Runtime, AsciiName, Valid)

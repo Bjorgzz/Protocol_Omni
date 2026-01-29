@@ -1,0 +1,6 @@
+Type: Padding
+Subtype: Non-empty
+Fixed: Yes
+Base: 1B40000h
+Offset: 1B3F000h
+Full size: 41000h (266240)

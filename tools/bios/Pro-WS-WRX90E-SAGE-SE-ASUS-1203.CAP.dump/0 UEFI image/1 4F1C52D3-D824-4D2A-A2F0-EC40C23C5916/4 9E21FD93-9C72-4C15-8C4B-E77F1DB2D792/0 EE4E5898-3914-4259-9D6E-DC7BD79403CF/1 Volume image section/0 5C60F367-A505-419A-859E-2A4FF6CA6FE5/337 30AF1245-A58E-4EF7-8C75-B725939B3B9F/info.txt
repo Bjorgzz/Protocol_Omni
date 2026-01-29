@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: CBA328h
+File GUID: 30AF1245-A58E-4EF7-8C75-B725939B3B9F
+Type: 0Ah
+Attributes: 00h
+Full size: BA76h (47734)
+Header size: 18h (24)
+Body size: BA5Eh (47710)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 33h, valid
+Data checksum: AAh, valid

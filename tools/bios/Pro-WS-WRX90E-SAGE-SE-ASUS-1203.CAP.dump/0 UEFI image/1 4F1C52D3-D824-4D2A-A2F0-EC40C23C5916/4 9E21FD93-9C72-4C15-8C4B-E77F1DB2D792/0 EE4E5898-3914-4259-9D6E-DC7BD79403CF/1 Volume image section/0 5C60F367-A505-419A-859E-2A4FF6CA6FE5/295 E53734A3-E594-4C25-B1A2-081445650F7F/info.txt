@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BD7800h
+File GUID: E53734A3-E594-4C25-B1A2-081445650F7F
+Type: 0Ah
+Attributes: 00h
+Full size: 2C8Ah (11402)
+Header size: 18h (24)
+Body size: 2C72h (11378)
+Tail size: 0h (0)
+State: F8h
+Header checksum: BCh, valid
+Data checksum: AAh, valid

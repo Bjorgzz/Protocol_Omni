@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BDA490h
+File GUID: BC3245BD-B982-4F55-9F79-056AD7E987C5
+Type: 0Ah
+Attributes: 00h
+Full size: 2A52h (10834)
+Header size: 18h (24)
+Body size: 2A3Ah (10810)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 18h, valid
+Data checksum: AAh, valid

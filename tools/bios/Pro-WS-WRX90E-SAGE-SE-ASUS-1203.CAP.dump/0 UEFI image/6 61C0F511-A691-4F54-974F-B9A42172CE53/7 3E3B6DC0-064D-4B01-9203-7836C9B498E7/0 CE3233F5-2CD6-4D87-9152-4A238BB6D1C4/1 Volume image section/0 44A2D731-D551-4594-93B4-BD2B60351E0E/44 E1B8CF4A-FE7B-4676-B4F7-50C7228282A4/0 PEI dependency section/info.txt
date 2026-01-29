@@ -1,0 +1,15 @@
+Type: Section
+Subtype: PEI dependency
+Fixed: No
+Offset: 18h
+Type: 1Bh
+Full size: 3Ah (58)
+Header size: 4h (4)
+Body size: 36h (54)
+Parsed expression:
+PUSH F894643D-C449-42D1-8EA8-85BDD8C65BDE
+PUSH 01F34D25-4DE2-23AD-3FF3-36353FF323F1
+PUSH 7D725C4F-2A1D-4ADC-8F21-91E8AB9D9360
+AND
+AND
+END

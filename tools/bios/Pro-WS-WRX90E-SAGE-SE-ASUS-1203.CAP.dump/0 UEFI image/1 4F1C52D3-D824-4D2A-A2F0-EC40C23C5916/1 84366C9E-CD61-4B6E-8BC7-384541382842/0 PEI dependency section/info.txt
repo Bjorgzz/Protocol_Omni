@@ -1,0 +1,12 @@
+Type: Section
+Subtype: PEI dependency
+Fixed: No
+Base: 10020C8h
+Offset: 18h
+Type: 1Bh
+Full size: 6h (6)
+Header size: 4h (4)
+Body size: 2h (2)
+Parsed expression:
+FALSE
+END

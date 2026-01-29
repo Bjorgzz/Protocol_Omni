@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: D35CD8h
+File GUID: 6C289241-E240-483F-9E3E-872C0396B599
+Type: 0Ah
+Attributes: 00h
+Full size: 1476h (5238)
+Header size: 18h (24)
+Body size: 145Eh (5214)
+Tail size: 0h (0)
+State: F8h
+Header checksum: E6h, valid
+Data checksum: AAh, valid

@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM module
+Fixed: No
+Offset: BED5C8h
+File GUID: 30A5E718-39CA-441C-BED3-F4A3A931458D
+Type: 0Ah
+Attributes: 00h
+Full size: 26BEh (9918)
+Header size: 18h (24)
+Body size: 26A6h (9894)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 07h, valid
+Data checksum: AAh, valid

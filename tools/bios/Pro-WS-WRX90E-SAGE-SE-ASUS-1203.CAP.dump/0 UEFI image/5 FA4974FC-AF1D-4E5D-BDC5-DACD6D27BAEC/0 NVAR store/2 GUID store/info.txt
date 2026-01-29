@@ -1,0 +1,7 @@
+Type: NVAR GUID store
+Subtype: 
+Fixed: Yes
+Base: 1C00FF0h
+Offset: 1FF78h
+Full size: 10h (16)
+GUIDs in store: 1

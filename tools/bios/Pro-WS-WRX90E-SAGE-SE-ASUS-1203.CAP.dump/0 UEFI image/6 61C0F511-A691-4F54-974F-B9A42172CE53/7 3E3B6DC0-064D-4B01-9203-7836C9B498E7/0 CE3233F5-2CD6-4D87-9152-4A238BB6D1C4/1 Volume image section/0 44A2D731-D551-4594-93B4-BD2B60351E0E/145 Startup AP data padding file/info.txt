@@ -1,0 +1,14 @@
+Type: File
+Subtype: Pad
+Fixed: Yes
+Offset: 1A12F0h
+File GUID: FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
+Type: F0h
+Attributes: 00h
+Full size: 457978h (4553080)
+Header size: 18h (24)
+Body size: 457960h (4553056)
+Tail size: 0h (0)
+State: F8h
+Header checksum: EAh, valid
+Data checksum: AAh, valid

@@ -1,0 +1,8 @@
+Type: Section
+Subtype: Raw
+Fixed: No
+Offset: 4A60h
+Type: 19h
+Full size: 19D2h (6610)
+Header size: 4h (4)
+Body size: 19CEh (6606)

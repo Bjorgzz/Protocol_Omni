@@ -1,0 +1,14 @@
+Type: File
+Subtype: PEI module
+Fixed: No
+Offset: C2600h
+File GUID: 294E3134-59C5-4C21-B59E-4A8F30515091
+Type: 06h
+Attributes: 00h
+Full size: 50E6h (20710)
+Header size: 18h (24)
+Body size: 50CEh (20686)
+Tail size: 0h (0)
+State: F8h
+Header checksum: CFh, valid
+Data checksum: AAh, valid

@@ -1,0 +1,14 @@
+Type: File
+Subtype: SMM core
+Fixed: No
+Offset: B93050h
+File GUID: E94F54CD-81EB-47ED-AEC3-856F5DC157A9
+Type: 0Dh
+Attributes: 00h
+Full size: E92Ah (59690)
+Header size: 18h (24)
+Body size: E912h (59666)
+Tail size: 0h (0)
+State: F8h
+Header checksum: 64h, valid
+Data checksum: AAh, valid
