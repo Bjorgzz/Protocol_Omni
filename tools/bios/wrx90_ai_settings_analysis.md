@@ -70,12 +70,20 @@ Using setup_var.efi with VarStore GUID: 3A997502-647A-4C82-998E-52EF9486A247 (Am
 **Full batch script**: `tools/bios/nuclear_settings.nsh` (EFI Shell format)
 
 ```bash
-# Key commands (excerpt from nuclear_settings.txt):
+# Key commands (excerpt from nuclear_settings.nsh):
 
-# PPT 1400W (Manual mode + 1400 value) - AmdSetupSHP
-setup_var.efi 0x418 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247
-setup_var.efi 0x419 0x78 -g 3A997502-647A-4C82-998E-52EF9486A247
-setup_var.efi 0x41A 0x05 -g 3A997502-647A-4C82-998E-52EF9486A247
+# PPT 1400W (Manual mode + 4-byte value) - AmdSetupSHP
+setup_var.efi 0x418 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247  # PPT Control = Manual
+setup_var.efi 0x419 0x78 -g 3A997502-647A-4C82-998E-52EF9486A247  # 1400 = 0x0578 (byte 0)
+setup_var.efi 0x41A 0x05 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 1)
+setup_var.efi 0x41B 0x00 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 2)
+setup_var.efi 0x41C 0x00 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 3)
+
+# TDP 350W (4-byte value) - AmdSetupSHP
+setup_var.efi 0x414 0x5E -g 3A997502-647A-4C82-998E-52EF9486A247  # 350 = 0x015E (byte 0)
+setup_var.efi 0x415 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 1)
+setup_var.efi 0x416 0x00 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 2)
+setup_var.efi 0x417 0x00 -g 3A997502-647A-4C82-998E-52EF9486A247  # (byte 3)
 
 # DF C-States Disabled (CRITICAL for AI bandwidth)
 setup_var.efi 0x42D 0x00 -g 3A997502-647A-4C82-998E-52EF9486A247
@@ -100,8 +108,8 @@ setup_var.efi 0x60 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247  # L2 Stream
 setup_var.efi 0x61 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247  # L2 Up/Down
 setup_var.efi 0x62 0x01 -g 3A997502-647A-4C82-998E-52EF9486A247  # L1 Burst
 
-# Above 4G Decoding - Setup VarStore (default GUID)
-setup_var.efi 0x102 0x01
+# Above 4G Decoding - Setup VarStore (explicit GUID required)
+setup_var.efi 0x102 0x01 -g EC87D643-EBA4-4BB5-A1E5-3F3E36B20DA9
 ```
 
 ---
