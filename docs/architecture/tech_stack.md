@@ -32,9 +32,9 @@ Hardware specifications, software versions, and stack decisions for Protocol OMN
 |-----------|---------------|
 | **CPU** | AMD Threadripper 9995WX (96 Cores, Zen5 AVX-512) |
 | **RAM** | 384GB DDR5-6400 (ECC), **NPS=1 (Unified NUMA)** |
-| **GPU 0** | RTX PRO 6000 Blackwell (96GB, SM 12.0) @ `f1:00.0` |
+| **GPU 0** | RTX PRO 6000 Blackwell (96GB, SM 12.0) @ `f1:00.0` (Max 600W) |
 | **GPU 0 UUID** | `GPU-f4f210c1-5a52-7267-979e-fe922961190a` |
-| **GPU 1** | RTX 5090 (32GB, SM 12.0) @ `11:00.0` |
+| **GPU 1** | RTX 5090 (32GB, SM 12.0) @ `11:00.0` (Max 800W) |
 | **GPU 1 UUID** | `GPU-bfbb9aa1-3d36-b47b-988f-5752cfc54601` |
 | **Storage** | 2× 4TB NVMe Gen5 |
 
