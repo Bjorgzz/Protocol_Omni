@@ -231,12 +231,14 @@ ruff check src/
 
 ## Archive
 
-Legacy documentation (reference only):
+Legacy documentation moved to [`archive/historical-docs`](https://github.com/Bjorgzz/Protocol_Omni/tree/archive/historical-docs/docs/_archive) branch.
 
 | Document | Notes |
 |----------|-------|
-| [PROTOCOL_OMNI_V14.md](_archive/PROTOCOL_OMNI_V14.md) | Superseded by v15.0 |
-| [OMNI_WORKFLOW_v9.md](_archive/OMNI_WORKFLOW_v9.md) | Proxmox-based (obsolete) |
+| PROTOCOL_OMNI_V14.md | Superseded by v15.0 |
+| OMNI_WORKFLOW_v9.md | Proxmox-based (obsolete) |
+| ai-base-research-update.md | Historical research (6.4MB) |
+| prometheus-stack-audit.md | Observability audit (3.3MB) |
 
 ---
 
