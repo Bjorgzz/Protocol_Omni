@@ -25,7 +25,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
-| **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120a, SM120 native) |
+| **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120→120a auto, SM120 native) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |

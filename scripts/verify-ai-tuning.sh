@@ -178,8 +178,8 @@ nvidia-smi --query-gpu=index,name,power.limit --format=csv,noheader | while IFS=
     echo "  GPU $idx ($name): $power"
 done
 
-# GPU count
-GPU_COUNT=$(nvidia-smi -L | wc -l)
+# GPU count (MIG-safe query)
+GPU_COUNT=$(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l)
 check_pass "Detected GPUs: $GPU_COUNT"
 
 # GPU topology (P2P)

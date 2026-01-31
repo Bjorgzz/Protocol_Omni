@@ -122,7 +122,7 @@ else
 
     # Set GPU compute mode to EXCLUSIVE_PROCESS
     echo "Setting GPU compute mode to EXCLUSIVE_PROCESS..."
-    GPU_COUNT=$(nvidia-smi -L | wc -l)
+    GPU_COUNT=$(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l)  # MIG-safe
     for (( i=0; i<$GPU_COUNT; i++ )); do
         nvidia-smi -i $i -c EXCLUSIVE_PROCESS > /dev/null 2>&1
     done

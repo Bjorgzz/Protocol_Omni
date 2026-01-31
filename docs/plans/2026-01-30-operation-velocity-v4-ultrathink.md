@@ -56,12 +56,16 @@ rm -rf llama.cpp-mxfp4
 git clone --depth 1 --branch b7883 https://github.com/ggerganov/llama.cpp.git llama.cpp-mxfp4
 cd llama.cpp-mxfp4
 
-# Build with SM120f native support (f suffix enables full features including MXFP4)
+# Build with SM120 native support (CMake auto-upgrades to 120a for Blackwell)
+# VERIFIED 2026-01-30: CMake output shows "Replacing 120 in CMAKE_CUDA_ARCHITECTURES with 120a"
 cmake -B build \
     -DGGML_CUDA=ON \
-    -DCMAKE_CUDA_ARCHITECTURES=120f \
+    -DCMAKE_CUDA_ARCHITECTURES=120 \
     -DGGML_NATIVE=OFF \
     -DCMAKE_BUILD_TYPE=Release
+
+# Verify arch upgrade occurred (look for "120a" in CMake cache)
+grep -q "120a" build/CMakeCache.txt && echo "✓ CUDA arch 120a confirmed" || echo "⚠ Check CMAKE_CUDA_ARCHITECTURES"
 
 cmake --build build -j96
 
@@ -102,9 +106,10 @@ WORKDIR /build
 RUN git clone --depth 1 --branch b7883 https://github.com/ggerganov/llama.cpp.git
 WORKDIR /build/llama.cpp
 
+# CMake auto-upgrades CUDA_ARCHITECTURES=120 to 120a for Blackwell
 RUN cmake -B build \
     -DGGML_CUDA=ON \
-    -DCMAKE_CUDA_ARCHITECTURES=120f \
+    -DCMAKE_CUDA_ARCHITECTURES=120 \
     -DGGML_NATIVE=OFF \
     -DLLAMA_CURL=OFF \
     -DCMAKE_BUILD_TYPE=Release \
@@ -219,10 +224,10 @@ HugePages_Total:   65536
 HugePages_Free:    65XXX
 ```
 
-**Step 3: Persist**
+**Step 3: Persist (idempotent — removes duplicates then adds single entry)**
 
 ```bash
-ssh omni@100.94.47.77 "echo 'vm.nr_hugepages = 65536' | sudo tee -a /etc/sysctl.d/99-ai-inference.conf"
+ssh omni@100.94.47.77 "sudo sed -i '/^vm\.nr_hugepages/d' /etc/sysctl.d/99-ai-inference.conf 2>/dev/null; echo 'vm.nr_hugepages = 65536' | sudo tee -a /etc/sysctl.d/99-ai-inference.conf"
 ```
 
 ---
