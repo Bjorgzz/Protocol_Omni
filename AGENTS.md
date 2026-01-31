@@ -17,13 +17,13 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Current** | **11.79 tok/s** (DeepSeek-R1, Gen 5 PCIe) + **48.9 tok/s** (Qwen-Coder) |
 | **Op Velocity** | **v4 COMPLETE** — Dual-GPU separation, llama.cpp c3b87ce |
 | **PBO Status** | **ENABLED** (5.6 GHz verified via freq check ✅) |
-| **GPU OC** | Core: **+800/+800 MHz**, **Memory: +3000 MHz**. Tested stable to +1000 core, 0 ECC errors. Script: `/home/omni/gpu-oc-persist.sh` |
+| **GPU OC** | Core: **+400/+400 MHz**, **Memory: +3000 MHz**. Short tests pass +1000, sustained load crashes +800. Service: `gpu-oc.service` |
 | **GPU VRAM** | **127 GB total** (RTX 5090: 32GB + PRO 6000: 96GB) |
 | **GPU Allocation** | PRO 6000: DeepSeek-R1 (80GB), RTX 5090: Qwen-Coder (13GB) |
 | **PCIe Status** | **PRO 6000: Gen 5 x16** ✅, **RTX 5090: Gen 4 x16** ✅ (setpci fix, service enabled) |
 | **SecureBoot** | **DISABLED** (Restored via Redfish + MOK. ✅) |
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
-| **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
+| **Disk** | **2.2TB used (3.8TB free of 6TB)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120→120a auto, SM120 native) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
@@ -34,6 +34,23 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 | **BIOS Backup** | `benchmarks/2026-01-29-baseline/bios_baseline.md` + server `/home/omni/bios_backup_nps4_baseline.json` |
+
+---
+
+## Lessons Lookup (READ BEFORE WORKING)
+
+**MANDATORY**: Before working on a topic, READ the relevant section in [`docs/architecture/lessons-learned.md`](docs/architecture/lessons-learned.md).
+
+| Task Area | Required Reading | Key Lesson |
+|-----------|-----------------|------------|
+| **GPU / OC** | [§1](docs/architecture/lessons-learned.md#1-gpu--overclocking) | Core OC = 0 gain, +400/+3000 stable |
+| **PCIe** | [§2](docs/architecture/lessons-learned.md#2-pcie--interconnect) | setpci fixes, VBIOS flash = brick |
+| **BIOS / RAM** | [§3](docs/architecture/lessons-learned.md#3-bios--memory-tuning) | tREFI=65535, DF C-States=Disabled |
+| **Inference** | [§4](docs/architecture/lessons-learned.md#4-inference-engines) | llama.cpp only, others blocked |
+| **Docker** | [§5](docs/architecture/lessons-learned.md#5-docker--containers) | No CUDA VMM disable |
+| **Multi-GPU** | [§6](docs/architecture/lessons-learned.md#6-multi-gpu-architecture) | Independent > tensor split |
+| **Network** | [§7](docs/architecture/lessons-learned.md#7-network--security) | Verdent bypass via scripts |
+| **Builds** | [§8](docs/architecture/lessons-learned.md#8-build--dependencies) | CUDA 12.8+, no shallow clone |
 
 ---
 
@@ -71,6 +88,7 @@ Resolved findings (F-xxx RESOLVED, S-xxx) documented in [`docs/architecture/less
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-01-31 Speculative Decoding Tokenizer Mismatch (S-033)**: **DeepSeek-R1 uses proprietary tokenizer INCOMPATIBLE with Llama-based draft models**. `DeepSeek-R1-Distill-Llama-*` uses Llama tokenizer — speculative decoding FAILS. **CORRECT APPROACH**: Use DeepSeek's native **MTP (Multi-Token Prediction)** module instead of external draft. For other models (Llama family, Qwen), external speculative decoding works if tokenizer matches. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
 - **2026-01-31 Repository Optimization (S-032)**: Rewrote git history using `git-filter-repo` to remove large files. **Results**: `.git/` reduced from **128MB → 1.1MB** (99% reduction), tracked content **2.9MB** (265 files). Removed: BIOS CAP/dump (324MB), KVM screenshots (52MB), VBIOS ROM (1.9MB), archive markdown (10MB). Archive files preserved at `archive/historical-docs` branch. GitHub Issues (#1-#11) + ADRs (0001-0005) + issue templates added for organized tracking. **Clone size**: ~3-4MB (vs 128MB+ before).
 - **2026-01-31 Dual-GPU Optimization Deep Research (S-031)**: Comprehensive analysis of multi-GPU strategies for asymmetric VRAM (96GB + 32GB). **KEY FINDINGS**: (1) **ik_llama.cpp graph split mode** achieves 3-4x speedup BUT requires EVEN VRAM distribution — would waste 64GB on PRO 6000, **NOT RECOMMENDED**. (2) **Speculative decoding** viable upgrade path (+25-60% speedup), llama-server supports `--hf-repo-draft`. (3) **Independent workloads (current architecture) = OPTIMAL** for asymmetric VRAM — zero inter-GPU overhead, max utilization. (4) **Prefill-decode disaggregation** NOT VIABLE (requires custom implementation + KV cache bottlenecks). **Current PCIe**: RTX 5090 @ Gen 4, PRO 6000 @ Gen 5 — sufficient for independent workloads and speculative decoding; graph split limited by VRAM asymmetry not PCIe. **RECOMMENDATION**: Keep independent workloads (DeepSeek-R1 @ PRO 6000, Qwen-Coder @ RTX 5090), explore speculative decoding for single-model speedup. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
 - **2026-01-31 GPU OC Systematic Testing (S-030)**: Incremental core OC testing (+20 MHz steps) with ECC error monitoring. **Results**: Both GPUs stable from +100 to +1000 MHz core with +3000 MHz memory — **ZERO ECC errors** on PRO 6000 across all tests. Performance flat at **11.85 tok/s** regardless of core OC (confirms memory-bandwidth bound). Extended stress test (10x 500-token inferences) passed at +1000 core. **Production config**: +800 core / +3000 memory (headroom for thermal variance). Script: `/home/omni/test-oc.sh` for ECC-monitored testing. **Key insight**: Earlier +1000 crash was likely thermal (different session/container), not silicon instability.
@@ -196,11 +214,10 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 
 | Directive | Why | Reference |
 |-----------|-----|-----------|
-| **Concrete Bunker** | llama.cpp = BASELINE. SGLang + kt-kernel = UPGRADE PATH. | [Lessons Learned](docs/architecture/lessons-learned.md#f-027) |
-| **Bare Metal Build** | Docker VMM disabled = 300% perf regression. | [Lessons Learned](docs/architecture/lessons-learned.md#f-003) |
+| **Concrete Bunker** | llama.cpp = BASELINE. SGLang + kt-kernel = UPGRADE PATH. | [§4 Inference](docs/architecture/lessons-learned.md#4-inference-engines) |
+| **Bare Metal Build** | Docker VMM disabled = 300% perf regression. | [§5 F-003](docs/architecture/lessons-learned.md#f-003-cuda-vmm--300-regression) |
 | **MCP Proxy** | All tool calls via `:8070` (Default Deny policy). | [Security](docs/security/overview.md) |
-| **Sync `httpx`** | Use sync `httpx.Client` for llama.cpp. | [Lessons Learned](docs/architecture/lessons-learned.md#f-007) |
-| **Health Checks** | Use `wget`/`python urllib` NOT `curl` in Docker. | [Lessons Learned](docs/architecture/lessons-learned.md#f-021) |
+| **Health Checks** | Use `wget`/`python urllib` NOT `curl` in Docker. | [§5 F-021](docs/architecture/lessons-learned.md#f-021-health-checks) |
 
 ---
 

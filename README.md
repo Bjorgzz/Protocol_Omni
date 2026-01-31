@@ -1,4 +1,4 @@
-# Protocol OMNI v16.2.2: SOVEREIGN COGNITION
+# Protocol OMNI v16.4.31: SOVEREIGN COGNITION
 
 Self-evolving AI infrastructure on bare metal Blackwell silicon.
 
@@ -6,56 +6,54 @@ Self-evolving AI infrastructure on bare metal Blackwell silicon.
 
 ## Overview
 
-Protocol OMNI v16.2.2 is a self-hosted AI inference stack running on Ubuntu 24.04 with dual NVIDIA Blackwell GPUs (96GB + 32GB). Following the **Concrete Bunker Doctrine**, it uses llama.cpp with explicit sm_120 compilation for maximum stability.
+Protocol OMNI v16.4.31 is a self-hosted AI inference stack running on Ubuntu 24.04 with dual NVIDIA Blackwell GPUs (96GB + 32GB). Following the **Concrete Bunker Doctrine**, it uses llama.cpp with native SM120 compilation for maximum stability.
 
-**v16.2.2 (Phase 4)**: LangGraph cognitive workflow, Mem0 persistent memory, Memgraph code knowledge graph, TensorRT-LLM sandbox.
+**v16.4.31 (Phase 6)**: Dual-GPU independent workloads, bare-metal llama.cpp, repository optimized.
 
 ```mermaid
 graph TB
     subgraph "omni-prime (192.168.3.10)"
         subgraph "Inference Layer"
-            DS["DeepSeek-V3.2<br/>671B Q3_K_M<br/>:8000"]
-            QW["Qwen2.5-Coder-7B<br/>CPU Executor<br/>:8002"]
-            TRT["TensorRT-LLM<br/>SANDBOX :8001"]
-        end
-        
-        subgraph "Cognitive Layer (NEW)"
-            GRAPH["LangGraph<br/>DAG Router<br/>:8080"]
-            MEM0["Mem0<br/>Persistent Memory<br/>:8050"]
-        end
-        
-        subgraph "Knowledge Layer"
-            MG["Memgraph<br/>Code Graph<br/>:7687"]
-            QD["Qdrant<br/>Vectors<br/>:6333"]
+            DS["DeepSeek-R1-0528<br/>671B Q4_K_M<br/>:8000"]
+            QW["Qwen2.5-Coder-32B<br/>Q4_K_M<br/>:8001"]
         end
         
         subgraph "Observability"
             PHX["Arize Phoenix<br/>:6006"]
         end
+        
+        subgraph "Storage"
+            MG["Memgraph<br/>Code Graph<br/>:7687"]
+            QD["Qdrant<br/>Vectors<br/>:6333"]
+        end
     end
     
-    GRAPH -->|traces| PHX
-    GRAPH -->|memory| MEM0
-    GRAPH -->|knowledge| MG
-    MEM0 -->|vectors| QD
-    GRAPH -->|inference| DS
-    GRAPH -->|inference| QW
+    DS -->|traces| PHX
+    QW -->|traces| PHX
 ```
 
 ## Quick Start
 
 ```bash
 # SSH to host
-ssh omni@192.168.3.10
+ssh omni@100.94.47.77  # Tailscale
+# or ssh omni@192.168.3.10  # LAN
 
-# Start the stack
-cd /nvme/src/docker
-GRAFANA_ADMIN_PASSWORD=admin123 docker compose -f omni-stack.yaml up -d
+# Services run via systemd (auto-start on boot)
+sudo systemctl status llama-deepseek   # DeepSeek-R1 @ :8000
+sudo systemctl status llama-qwen-coder # Qwen-Coder @ :8001
 
-# Verify services (wait 5-10 min for model load)
-curl http://localhost:8000/health   # DeepSeek Oracle
-curl http://localhost:8070/health   # MCP Security Proxy
-curl http://localhost:8080/health   # Agent Orchestrator
+# Health checks (host-only; use wget/python inside containers)
+curl http://localhost:8000/health   # DeepSeek-R1
+curl http://localhost:8001/health   # Qwen-Coder
+
+# MCP Proxy (required for agent tool calls)
+cd ~/Protocol_Omni/docker
+docker compose -f omni-stack.yaml up -d mcp-proxy
+curl http://localhost:8070/health
+
+# GPU status
+nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv
 ```
 
 ## Hardware
@@ -63,25 +61,20 @@ curl http://localhost:8080/health   # Agent Orchestrator
 | Component | Specification |
 |-----------|---------------|
 | **CPU** | AMD Threadripper PRO 9995WX (96 cores, 192 threads, AVX-512) |
-| **RAM** | 384GB DDR5-6400 ECC (NPS=1 Unified NUMA) |
-| **GPU 0** | NVIDIA RTX PRO 6000 Blackwell (96GB, SM 12.0) |
-| **GPU 1** | NVIDIA RTX 5090 (32GB, SM 12.0) |
-| **Storage** | 2× 4TB NVMe Gen5 |
-| **Network** | Ubuntu 24.04 @ 192.168.3.10 |
+| **RAM** | 384GB DDR5-6000 ECC (NPS=1, tREFI=65535) |
+| **GPU 0** | NVIDIA RTX PRO 6000 Blackwell (96GB, SM 12.0, Gen 5 x16) |
+| **GPU 1** | NVIDIA RTX 5090 (32GB, SM 12.0, Gen 4 x16) |
+| **Storage** | 6TB NVMe Gen5 (2.2TB used, 3.8TB free) |
+| **Network** | Ubuntu 24.04 @ 192.168.3.10 / Tailscale 100.94.47.77 |
 
 ## Services
 
-| Service | Port | Purpose | Throughput |
-|---------|------|---------|------------|
-| DeepSeek-V3.2 | 8000 | Oracle (671B Q3_K_M) | 10.9 tok/s |
-| Qwen-Executor | 8002 | Fast Executor (CPU-only) | 16.39 tok/s |
-| **TensorRT-LLM** | 8001 | **Sandbox** (NVFP4) | TBD |
-| LangGraph | 8080 | DAG Cognitive Router | — |
-| **Mem0** | 8050 | **Persistent Memory** | — |
+| Service | Port | Model | Throughput |
+|---------|------|-------|------------|
+| **DeepSeek-R1** | 8000 | DeepSeek-R1-0528 Q4_K_M (671B) | **11.79 tok/s** |
+| **Qwen-Coder** | 8001 | Qwen2.5-Coder-32B Q4_K_M | **48.9 tok/s** |
 | MCP Proxy | 8070 | Security Gateway (Default Deny) | — |
 | Arize Phoenix | 6006 | AI Observability (OTEL) | — |
-| Metacognition | 8011 | 4-gate verification | — |
-| GEPA Engine | 8010 | Prompt evolution | — |
 | Qdrant | 6333 | Vector store | — |
 | Memgraph | 7687 | Code knowledge graph | — |
 | Prometheus | 9090 | Metrics | — |
@@ -89,74 +82,61 @@ curl http://localhost:8080/health   # Agent Orchestrator
 
 ## VRAM Allocation
 
-| GPU | Allocated | Total | Utilization |
-|-----|-----------|-------|-------------|
-| RTX PRO 6000 Blackwell | 91 GB | 98 GB | 93% |
-| RTX 5090 | 26 GB | 33 GB | 81% |
+| GPU | Model | Allocated | Total |
+|-----|-------|-----------|-------|
+| RTX PRO 6000 | DeepSeek-R1-0528 | 80 GB | 96 GB |
+| RTX 5090 | Qwen2.5-Coder-32B | 13 GB | 32 GB |
 
-> **Note**: DeepSeek-V3.2 uses all GPU VRAM. The Qwen executor runs CPU-only using the Threadripper's 192 threads.
+> **Architecture**: Independent workloads per GPU (NOT tensor-split). PCIe overhead makes tensor-split slower for asymmetric VRAM.
 
 ## Project Structure
 
 ```
 Protocol_Omni/
 ├── README.md              # This file
-├── AGENTS.md              # AI agent operational doctrine
+├── AGENTS.md              # AI agent operational doctrine (routing document)
+├── skills/                # Agent capability library (TDD, Debugging, Planning)
+│   ├── systematic-debugging/SKILL.md
+│   ├── sentinel-doc-sync/SKILL.md
+│   └── test-driven-development/SKILL.md
 ├── docker/                # Docker Compose stacks
-│   ├── omni-stack.yaml    # Master compose file
-│   ├── Dockerfile.blackwell  # sm_120 inference image
-│   └── Dockerfile.trt-sandbox # TensorRT-LLM sandbox
-├── src/                   # Python modules
-│   ├── agent/             # LangGraph cognitive workflow
-│   │   ├── graph.py       # DAG workflow definition
-│   │   └── nodes/         # Node implementations
-│   ├── memory/            # Mem0 integration
-│   ├── knowledge/         # Memgraph client
-│   └── mcp_proxy/         # Security gateway
-├── scripts/               # Utilities
-│   ├── index_code.py      # AST → Memgraph indexer
-│   └── memgraph-schema.cypher
+│   └── omni-stack.yaml    # Support services (Phoenix, Qdrant, Memgraph)
 ├── docs/                  # Documentation
-└── config/                # Configuration files
+│   ├── architecture/      # Tech stack, lessons learned
+│   ├── adr/               # Architecture Decision Records
+│   ├── operations/        # Runbooks (RAM tuning, GPU OC)
+│   └── research/          # Deep research docs
+├── benchmarks/            # Performance baselines
+└── tools/                 # Utilities (BIOS analysis)
 ```
 
 ## Documentation
 
 | Category | Document | Description |
 |----------|----------|-------------|
-| **Start Here** | [Quickstart](docs/deployment/quickstart.md) | Get running in 10 minutes |
-| **Architecture** | [Overview](docs/architecture/overview.md) | System design |
-| **Doctrine** | [Concrete Bunker](docs/architecture/concrete-bunker-doctrine.md) | Why llama.cpp, not KTransformers |
-| **Deployment** | [Production Guide](docs/deployment/production-v15.md) | Full installation |
-| **Operations** | [Commands](docs/operations/commands.md) | CLI reference |
-| **Monitoring** | [Observability](docs/operations/monitoring.md) | Prometheus, Phoenix, Grafana |
-| **Troubleshooting** | [Issues](docs/operations/troubleshooting.md) | Common problems |
-| **API** | [Reference](docs/api/README.md) | OpenAI-compatible API |
-| **Security** | [MCP Proxy](docs/security/overview.md) | Default Deny gateway |
-| **Roadmap** | [Phase 4: Sovereign Cognition](docs/architecture/phase4-sovereign-cognition.md) | LangGraph + Mem0 + Memgraph |
+| **Start Here** | [AGENTS.md](AGENTS.md) | Operational routing document |
+| **Lessons** | [Lessons Learned](docs/architecture/lessons-learned.md) | Topic-organized failures & fixes |
+| **ADRs** | [Architecture Decisions](docs/adr/) | Strategic pivots (llama.cpp, Docker Compose) |
+| **Operations** | [RAM Tuning](docs/operations/2026-01-30-memory-bandwidth-optimization-6400mhz.md) | DDR5-6400 guide |
+| **Research** | [Multi-GPU](docs/research/2026-01-31-dual-gpu-optimization-deep-research.md) | Dual-GPU strategy analysis |
 
-## Roadmap
+## Key Lessons
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| Phase 1-3 | **COMPLETED** | Bare metal, llama.cpp, Phoenix observability |
-| Phase 4 | **IMPLEMENTED** | LangGraph workflow, Mem0 memory, Memgraph knowledge, TensorRT-LLM sandbox |
+| Topic | Lesson |
+|-------|--------|
+| **GPU OC** | Core OC = 0% gain (memory-bound). Memory +3000 MHz stable. |
+| **PCIe** | setpci link retrain fixes speed. VBIOS flash = brick. |
+| **Multi-GPU** | Independent workloads > tensor split for asymmetric VRAM |
+| **Inference** | llama.cpp only. SGLang/vLLM blocked. |
+
+See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
 
 ## IDE Configuration
 
 ```
 API Base: http://192.168.3.10:8000/v1
 API Key:  sk-local
-Model:    deepseek-v3.2
-```
-
-## Development
-
-```bash
-pip install -e ".[dev]"
-pytest
-ruff check src/
-mypy src/
+Model:    deepseek-r1-0528
 ```
 
 ## License

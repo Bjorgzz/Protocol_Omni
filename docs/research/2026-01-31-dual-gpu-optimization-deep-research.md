@@ -92,14 +92,17 @@ User Request → Router
 - Best with architecturally similar models (same family, different sizes)
 - Optimal draft: ~1B-3B parameters, same tokenizer as target
 
-**llama.cpp Implementation**:
+**⚠️ DeepSeek Tokenizer Warning**: DeepSeek uses a proprietary tokenizer. External draft models like `DeepSeek-R1-Distill-Llama-*` use Llama's tokenizer and are **INCOMPATIBLE** for speculative decoding. For DeepSeek, use the native **MTP (Multi-Token Prediction)** module instead of external draft models. See S-033 in AGENTS.md.
+
+**llama.cpp Example** (for models with compatible tokenizers):
 ```bash
+# Example: using a compatible draft model (NOT for DeepSeek)
 /opt/llama.cpp-mxfp4/build/bin/llama-server \
-  -m /nvme/models/deepseek-r1-0528-q4km/DeepSeek-R1-0528-Q4_K_M.gguf \
-  --hf-repo-draft deepseek-ai/DeepSeek-R1-Distill-Llama-1B-GGUF \
+  -m /path/to/target-model.gguf \
+  --hf-repo-draft compatible-draft-model-gguf \
   -ngl 10 \
-  -ngld 99 \             # Offload draft model fully to GPU
-  --device-draft 1 \     # Use RTX 5090 (device index 1) for draft
+  -ngld 99 \
+  --device-draft 1 \
   -c 4096 \
   --flash-attn on \
   --cache-type-k q4_1

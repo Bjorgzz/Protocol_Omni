@@ -1,64 +1,103 @@
 ---
 name: sentinel-doc-sync
-description: Ensures Protocol Omni documentation (AGENTS.md, plans) and ByteRover memory stay synchronized with code changes.
+description: Ensures Protocol Omni documentation (AGENTS.md, README.md, plans) and ByteRover memory stay synchronized with code changes.
 ---
 
-# Sentinel Documentation Sync
+# Sentinel Documentation Sync v2
 
 **When to use:**
-- After ANY code change, deployment, or operational shift.
-- When the user asks "status update" or "sync docs".
-- Before marking a task as "DONE".
-- Before ending a session or context handoff.
+- After ANY code change, deployment, or operational shift
+- Before marking a task as "DONE"
+- Before ending a session or context handoff
 
 ## The Mandate
-Code, Documentation, and Memory are one. If code changes but `AGENTS.md` or ByteRover does not, the system is broken.
+Code, Documentation, and Memory are ONE. If code changes but docs do not, the system is broken.
+
+---
+
+## Pre-Work: Topic Lookup (MANDATORY)
+
+**Before working on any area, agents MUST read the relevant topic section:**
+
+| Task Area | Required Reading |
+|-----------|-----------------|
+| GPU / OC | [§1 GPU & Overclocking](docs/architecture/lessons-learned.md#1-gpu--overclocking) |
+| PCIe / Slots | [§2 PCIe & Interconnect](docs/architecture/lessons-learned.md#2-pcie--interconnect) |
+| BIOS / RAM | [§3 BIOS & Memory](docs/architecture/lessons-learned.md#3-bios--memory-tuning) |
+| Inference | [§4 Inference Engines](docs/architecture/lessons-learned.md#4-inference-engines) |
+| Docker | [§5 Docker & Containers](docs/architecture/lessons-learned.md#5-docker--containers) |
+| Multi-GPU | [§6 Multi-GPU](docs/architecture/lessons-learned.md#6-multi-gpu-architecture) |
+| Network | [§7 Network & Security](docs/architecture/lessons-learned.md#7-network--security) |
+| Builds | [§8 Build & Dependencies](docs/architecture/lessons-learned.md#8-build--dependencies) |
+
+---
 
 ## Synchronization Checklist
 
-### 1. The Routing Table (`AGENTS.md`)
-- [ ] **Status**: Update the "Status" table (e.g., "HF DOWNLOAD ACTIVE").
-- [ ] **Phase**: Verify "Current Phase" matches the roadmap.
-- [ ] **Directives**: Did we learn a new "No-Go" rule? Add it.
+### 1. AGENTS.md [CRITICAL]
+- [ ] **Version**: Increment (vX.Y.Z → vX.Y.Z+1)
+- [ ] **Status Table**: Update phase, performance, GPU status
+- [ ] **Recent Lessons**: Add S-XXX/F-XXX entry (keep last 10-15 only)
+- [ ] **Directives**: New rule learned? Add it
 
-### 2. The Plan (`docs/plans/`)
-- [ ] **Progress**: Mark completed steps in the active plan file.
-- [ ] **Blockers**: Record any new blockers (e.g., "GGUF Incompatible").
-- [ ] **New Artifacts**: Link any new scripts or containers created.
+### 2. README.md [CRITICAL]
+- [ ] **Version Alignment**: MUST match AGENTS.md
+- [ ] **Architecture Diagram**: Update if services changed
+- [ ] **Performance Table**: Update throughput numbers
 
-### 3. The Internal Memory (`docs/architecture/lessons-learned.md`)
-- [ ] **Failures**: If something failed (e.g., "GGUF load error"), log it as an F-XXX entry.
-- [ ] **Discoveries**: Log successful configs (e.g., "Use snapshot_download for HF").
+### 3. lessons-learned.md (Topic Archive)
+- [ ] Add detailed entry to appropriate topic section
+- [ ] Update Quick Reference table if new anti-pattern discovered
 
-### 4. The External Memory (ByteRover) [MANDATORY]
-- [ ] **Curate**: Run `brv curate "v16.x: <What changed>" --files <relevant-paths>`
-- [ ] **Scope**: Include files that contain new patterns, configs, or learnings.
-- [ ] **Context**: Summary should be queryable by future agents.
+### 4. ByteRover [MANDATORY]
+```bash
+brv curate "vX.Y.Z: <summary>" --files AGENTS.md README.md docs/architecture/lessons-learned.md
+```
+
+---
+
+## AGENTS.md Trimming Protocol
+
+**When lessons exceed 15 entries:**
+1. Move oldest entries to topic section in `lessons-learned.md`
+2. Keep abbreviated summary in AGENTS.md with section link
+3. Example: `- **2026-01-28 S-015-S-018**: BIOS work — see [§3](docs/architecture/lessons-learned.md#3-bios--memory-tuning)`
+
+---
+
+## Cleanup Check (PERIODIC)
 
 ```bash
-# Example curations
-brv curate "v16.4.2: SGLang FP8 loading with 300GB CPU offload" --files docs/plans/2026-01-26-ktransformers-full-resurrection.md
-brv curate "v16.4.2: Verdent shell restrictions resolved via Bash(*) wrapper" --files docs/architecture/lessons-learned.md
+# Check for obsolete directories
+find . -maxdepth 2 -type d -name "_archive*" | head -5
+find . -maxdepth 2 -type d -empty | head -5
+
+# Verify ADR compliance
+grep -r "DEPRECATED\|OBSOLETE" docs/ --include="*.md" | head -5
 ```
 
-## Execution Order
+---
 
-```
-┌─────────────────────────────────────────┐
-│  1. UPDATE DOCS                         │
-│     AGENTS.md → plans/ → lessons-learned│
-├─────────────────────────────────────────┤
-│  2. CURATE TO BYTEROVER                 │
-│     brv curate "<summary>" --files <path>│
-├─────────────────────────────────────────┤
-│  3. VERIFY (if ending session)          │
-│     brv status                          │
-└─────────────────────────────────────────┘
+## Version Alignment Commands
+
+```bash
+# Check alignment (version-agnostic)
+grep -E "^#.*v[0-9]+\.[0-9]+\.[0-9]+" AGENTS.md README.md
+
+# Sync changes
+brv curate "vX.Y.Z: <summary>" --files AGENTS.md README.md
 ```
 
-## Anti-Patterns (Do Not Do)
-- ❌ updating code without updating `AGENTS.md`
-- ❌ writing "TODO: update docs later"
-- ❌ vague status updates ("worked on stuff") -> Be specific ("Downloaded 1.2TB weights")
-- ❌ skipping `brv curate` before session end (loses cross-session memory)
-- ❌ curating without specific file references (makes knowledge unqueryable)
+---
+
+## Anti-Patterns
+
+| Don't | Do |
+|-------|-----|
+| Update code without AGENTS.md | Sync immediately |
+| README version drift | Match AGENTS.md version |
+| "TODO: update docs later" | Sync NOW |
+| Keep 50+ lessons in AGENTS.md | Trim to 15, archive rest |
+| Skip topic pre-read | READ lessons before working |
+| Skip `brv curate` | Run before session end |
+| Leave obsolete directories | Check ADRs, delete cruft |

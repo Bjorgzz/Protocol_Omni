@@ -1,5 +1,0 @@
-machine:
-  install:
-    extraKernelArgs:
-      - nvidia-drm.modeset=0
-      - console=tty0
