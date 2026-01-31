@@ -1,9 +1,0 @@
-Type: Section
-Subtype: Volume image
-Fixed: No
-Base: 10010ACh
-Offset: 34h
-Type: 17h
-Full size: 1004h (4100)
-Header size: 4h (4)
-Body size: 1000h (4096)

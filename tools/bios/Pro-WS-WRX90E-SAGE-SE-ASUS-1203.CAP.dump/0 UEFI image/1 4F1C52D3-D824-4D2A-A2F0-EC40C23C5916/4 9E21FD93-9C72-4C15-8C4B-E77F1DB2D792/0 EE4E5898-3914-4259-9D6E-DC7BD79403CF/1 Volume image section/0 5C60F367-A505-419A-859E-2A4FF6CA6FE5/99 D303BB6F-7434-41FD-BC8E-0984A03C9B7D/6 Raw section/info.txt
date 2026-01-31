@@ -1,8 +1,0 @@
-Type: Section
-Subtype: Raw
-Fixed: No
-Offset: 3548h
-Type: 19h
-Full size: 104Ah (4170)
-Header size: 4h (4)
-Body size: 1046h (4166)

@@ -1,5 +1,0 @@
-Type: Free space
-Subtype: 
-Fixed: No
-Offset: 43530h
-Full size: AD0h (2768)

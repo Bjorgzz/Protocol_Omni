@@ -1,8 +1,0 @@
-Type: Section
-Subtype: Raw
-Fixed: No
-Offset: E68h
-Type: 19h
-Full size: 504h (1284)
-Header size: 4h (4)
-Body size: 500h (1280)

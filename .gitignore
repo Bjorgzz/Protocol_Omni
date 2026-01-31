@@ -52,3 +52,12 @@ node_modules/
 .brv/blobs/*.db-wal
 .brv/blobs/*.db-shm
 openmemory.db
+
+# BIOS/Firmware (large, don't commit)
+*.rom
+*.CAP
+*.CAP.dump/
+*.bin
+
+# Extraction tools (can re-download)
+tools/uefiextract/

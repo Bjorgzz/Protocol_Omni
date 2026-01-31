@@ -1,6 +1,0 @@
-Type: NVAR GUID store
-Subtype: 
-Fixed: Yes
-Offset: 5158h
-Full size: 10h (16)
-GUIDs in store: 1

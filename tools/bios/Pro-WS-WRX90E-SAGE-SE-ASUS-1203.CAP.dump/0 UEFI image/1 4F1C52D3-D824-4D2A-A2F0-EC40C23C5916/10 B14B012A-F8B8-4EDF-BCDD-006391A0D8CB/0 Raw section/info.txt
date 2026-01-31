@@ -1,9 +1,0 @@
-Type: Section
-Subtype: Raw
-Fixed: No
-Base: 15389D8h
-Offset: 18h
-Type: 19h
-Full size: 1CDEh (7390)
-Header size: 4h (4)
-Body size: 1CDAh (7386)

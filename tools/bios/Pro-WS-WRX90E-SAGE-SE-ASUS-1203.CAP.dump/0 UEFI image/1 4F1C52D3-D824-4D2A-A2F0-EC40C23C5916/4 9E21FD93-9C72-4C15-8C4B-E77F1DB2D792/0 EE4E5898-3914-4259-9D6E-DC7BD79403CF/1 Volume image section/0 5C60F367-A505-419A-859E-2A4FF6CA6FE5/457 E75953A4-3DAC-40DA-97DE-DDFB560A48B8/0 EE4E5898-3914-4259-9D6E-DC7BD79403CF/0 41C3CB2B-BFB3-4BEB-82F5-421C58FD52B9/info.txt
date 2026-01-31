@@ -1,9 +1,0 @@
-Type: Section
-Subtype: Freeform subtype GUID
-Fixed: No
-Offset: 18h
-Type: 18h
-Full size: D814h (55316)
-Header size: 14h (20)
-Body size: D800h (55296)
-Subtype GUID: 41C3CB2B-BFB3-4BEB-82F5-421C58FD52B9
