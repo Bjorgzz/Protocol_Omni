@@ -1,8 +1,8 @@
 # Protocol OMNI: Lessons Learned Registry
 
 > **Purpose**: Chronicle of failures, pivots, and hard-won knowledge for AI agent training  
-> **Last Updated**: 2026-01-29  
-> **Versions Covered**: v13.0 → v16.4.17
+> **Last Updated**: 2026-01-31  
+> **Versions Covered**: v13.0 → v16.4.29
 
 This document captures architectural decisions, failed experiments, and pivots to prevent agents from repeating mistakes.
 
@@ -12,6 +12,10 @@ This document captures architectural decisions, failed experiments, and pivots t
 
 | Anti-Pattern | Why It Failed | Correct Approach |
 |--------------|---------------|------------------|
+| RTX 5090 PCIe Gen 5 (F-031/F-033) | Multi-PCB design degrades signal integrity | Force Gen 4 via `setpci` on AMD upstream port (10:01.1) ✅ |
+| BIOS PCIe Gen forcing | NVIDIA driver overrides BIOS settings | Use `setpci` link retrain from upstream PCIe bridge |
+| NVIDIA NVreg_EnablePCIeGen5 (F-033) | Parameter doesn't exist in driver 580.126.09 | Use `setpci CAP_EXP+0x30.w` to set target speed |
+| nvflash on Blackwell (F-032) | nvflash 5.867 can't read SM120 VBIOS (0-byte backup) | **DO NOT FLASH** - wait for Blackwell-compatible nvflash |
 | KTransformers on Blackwell | ~~sm_120 kernels missing~~ **LAZARUS SUCCESS** | kt-kernel 0.5.1 + PyTorch 2.11 nightly (cu128) ✅ |
 | ik_llama.cpp for asymmetric GPUs | NCCL overhead on pipeline parallelism | Standard llama.cpp with `--tensor-split` |
 | vLLM on SM120 | FP8 GEMM kernel fails | Wait for v0.13+ or use llama.cpp |

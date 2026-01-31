@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Lessons Learned Archive
+    url: https://github.com/Bjorgzz/Protocol_Omni/blob/main/docs/architecture/lessons-learned.md
+    about: Historical resolved issues (F-xxx RESOLVED, S-xxx) are documented here
+  - name: Architecture Decisions
+    url: https://github.com/Bjorgzz/Protocol_Omni/tree/main/docs/adr
+    about: Major strategic pivots (ADRs) are documented here
+  - name: AGENTS.md Status
+    url: https://github.com/Bjorgzz/Protocol_Omni/blob/main/AGENTS.md
+    about: Current system status and routing document
