@@ -61,10 +61,20 @@ sanitize_value() {
 # JSON-escape a string (handles quotes, backslashes, and all control chars U+0000-U+001F)
 json_escape() {
     local str="$1"
+    local result
     # If jq is available, use it for proper escaping
     if command -v jq &>/dev/null; then
-        printf '%s' "$str" | jq -Rs '.[:-1] // ""' 2>/dev/null | sed 's/^"//; s/"$//' || printf '%s' "$str"
-        return
+        # jq -Rs reads raw input as single string, outputs JSON-encoded with quotes
+        # Strip outer quotes with sed; check jq exit status explicitly
+        result=$(printf '%s' "$str" | jq -Rs '.' 2>/dev/null)
+        if [[ $? -eq 0 && -n "$result" ]]; then
+            # Strip leading/trailing quotes from jq output
+            result="${result#\"}"
+            result="${result%\"}"
+            printf '%s' "$result"
+            return
+        fi
+        # jq failed, fall through to manual escaping
     fi
     # Manual escaping fallback
     str="${str//\\/\\\\}"  # escape backslashes first
