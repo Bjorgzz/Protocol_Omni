@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.30)
+# Protocol OMNI (v16.4.31)
 
-> **Last Updated**: 2026-01-31 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Documentation Consistent**
+> **Last Updated**: 2026-01-31 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Repo Optimized**
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -11,7 +11,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | DUAL-GPU ACTIVE ✅ |
-| **Version** | v16.4.30 |
+| **Version** | v16.4.31 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 ✅ |
 | **Secondary** | **Qwen2.5-Coder-32B Q4_K_M** @ port 8001 ✅ (RTX 5090) |
 | **Current** | **11.79 tok/s** (DeepSeek-R1, Gen 5 PCIe) + **48.9 tok/s** (Qwen-Coder) |
@@ -71,6 +71,7 @@ Resolved findings (F-xxx RESOLVED, S-xxx) documented in [`docs/architecture/less
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-01-31 Repository Optimization (S-032)**: Rewrote git history using `git-filter-repo` to remove large files. **Results**: `.git/` reduced from **128MB → 1.1MB** (99% reduction), tracked content **2.9MB** (265 files). Removed: BIOS CAP/dump (324MB), KVM screenshots (52MB), VBIOS ROM (1.9MB), archive markdown (10MB). Archive files preserved at `archive/historical-docs` branch. GitHub Issues (#1-#11) + ADRs (0001-0005) + issue templates added for organized tracking. **Clone size**: ~3-4MB (vs 128MB+ before).
 - **2026-01-31 Dual-GPU Optimization Deep Research (S-031)**: Comprehensive analysis of multi-GPU strategies for asymmetric VRAM (96GB + 32GB). **KEY FINDINGS**: (1) **ik_llama.cpp graph split mode** achieves 3-4x speedup BUT requires EVEN VRAM distribution — would waste 64GB on PRO 6000, **NOT RECOMMENDED**. (2) **Speculative decoding** viable upgrade path (+25-60% speedup), llama-server supports `--hf-repo-draft`. (3) **Independent workloads (current architecture) = OPTIMAL** for asymmetric VRAM — zero inter-GPU overhead, max utilization. (4) **Prefill-decode disaggregation** NOT VIABLE (requires custom implementation + KV cache bottlenecks). **Current PCIe**: RTX 5090 @ Gen 4, PRO 6000 @ Gen 5 — sufficient for independent workloads and speculative decoding; graph split limited by VRAM asymmetry not PCIe. **RECOMMENDATION**: Keep independent workloads (DeepSeek-R1 @ PRO 6000, Qwen-Coder @ RTX 5090), explore speculative decoding for single-model speedup. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
 - **2026-01-31 GPU OC Systematic Testing (S-030)**: Incremental core OC testing (+20 MHz steps) with ECC error monitoring. **Results**: Both GPUs stable from +100 to +1000 MHz core with +3000 MHz memory — **ZERO ECC errors** on PRO 6000 across all tests. Performance flat at **11.85 tok/s** regardless of core OC (confirms memory-bandwidth bound). Extended stress test (10x 500-token inferences) passed at +1000 core. **Production config**: +800 core / +3000 memory (headroom for thermal variance). Script: `/home/omni/test-oc.sh` for ECC-monitored testing. **Key insight**: Earlier +1000 crash was likely thermal (different session/container), not silicon instability.
 - **2026-01-31 PCIe Link Speed FIX via setpci (F-033 RESOLVED)**: **FIXED both GPUs via setpci link retrain from AMD upstream PCIe ports**. RTX 5090: **Gen 4 x16** (16GT/s = 32 GB/s), PRO 6000: **Gen 5 x16** (32GT/s = 64 GB/s). **Root cause**: NVIDIA driver 580.126.09 doesn't have `NVreg_EnablePCIeGen5` parameter (was ignored). BIOS settings had no effect. **Solution**: Use `setpci` to modify Link Control 2 register on AMD PCIe bridge upstream ports and trigger link retrain. Commands: `setpci -s 10:01.1 CAP_EXP+0x30.w=0x0004` (Gen 4 for RTX 5090), `setpci -s f0:01.1 CAP_EXP+0x30.w=0x0005` (Gen 5 for PRO 6000), then `CAP_EXP+0x10.w=0x0020` to retrain. Script: `/home/omni/pcie-link-fix.sh`, Service: `pcie-link-fix.service` (enabled at boot). RTX 5090 caps at Gen 4 due to multi-PCB signal integrity; PRO 6000 achieves full Gen 5. **Performance impact**: Still ~11 tok/s (confirms PCIe ≠ bottleneck for LLM inference).
