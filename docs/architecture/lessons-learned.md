@@ -143,6 +143,48 @@ setpci -s XX:XX.X CAP_EXP+0x10.w=0x0020
 - **CORRECT**: Use DeepSeek's native **MTP (Multi-Token Prediction)** module
 - Speculative decoding works for models with matching tokenizers (Llama family, Qwen)
 
+### S-035: DeepSeek V3.2 MXFP4 Migration (2026-02-01)
+**Pre-made MXFP4 GGUF found** — downloading `stevescot1979/DeepSeek-V3.2-MXFP4-GGUF`:
+
+| Attribute | Value |
+|-----------|-------|
+| Size | 387 GB (18 chunks × 21.5GB) |
+| Format | GGUF (llama.cpp ready) |
+| Quantization | MXFP4_MOE + Q8_0 mixed |
+| Download speed | ~100 MB/s via aria2c |
+| Location | `/nvme/models/deepseek-v3.2-mxfp4/` |
+
+**V3.2 vs R1-0528**:
+- IMO 2025 Gold, IOI 2025 Gold medals
+- Surpasses GPT-5 (Speciale variant)
+- Uses DeepSeek Sparse Attention (DSA) for better long-context
+- Better agentic/tool-calling capabilities
+
+**MXFP4 Quality**:
+- Reddit: "lower perplexity than Q4_K_M and Q4_K_XL"
+- AMD: "99.5% accuracy retention on AIME24, GPQA Diamond, MATH-500"
+- Expected 2-3x speedup on Blackwell native MXFP4 tensor cores
+
+**Monitor**: `ssh omni@100.94.47.77 "tmux attach -t aria_dl"`
+
+### S-034: MXFP4 Quantization Feasibility (2026-02-01)
+**MXFP4_MOE available in llama-quantize** (type 38) but requires workflow:
+1. Download FP16 safetensors (689GB for R1-0528)
+2. Convert to GGUF via `convert_hf_to_gguf.py`
+3. Quantize with `llama-quantize --type MXFP4_MOE`
+
+| Resource | Status |
+|----------|--------|
+| AMD MXFP4 quants | **Safetensors only** (vLLM/SGLang) — NOT GGUF |
+| No pre-made MXFP4 GGUF | GitHub issue #15415 requests this |
+| Space required | ~1.3TB (source + intermediate + output) |
+| Space available | 2.2TB /nvme + 3.7TB USB ✅ |
+
+**Expected MXFP4 benefits** (per S-028):
+- Blackwell has native MXFP4 tensor core support
+- Current Q4_K_M doesn't benefit — requires re-quantization from FP16
+- Potential +27-31% throughput (per llama.cpp b7880+ notes)
+
 ### Recommended llama.cpp Flags
 ```bash
 -ngl 10 -sm none -c 4096 --cache-type-k q4_1 --flash-attn on

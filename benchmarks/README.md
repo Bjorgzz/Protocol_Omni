@@ -6,11 +6,87 @@ Performance baselines for Protocol OMNI inference optimization.
 
 ```
 benchmarks/
-├── 2026-01-28-pre-optimization/   # Baseline before BIOS tuning
-│   ├── settings.txt               # System state snapshot
-│   └── benchmark-results.txt      # Inference performance metrics
-└── YYYY-MM-DD-post-optimization/  # After applying optimizations (TBD)
+├── benchmark-sweep.sh              # Parameter sweep tool (wraps llama-bench)
+├── 2026-01-28-pre-optimization/    # Baseline before BIOS tuning
+│   ├── settings.txt                # System state snapshot
+│   └── benchmark-results.txt       # Inference performance metrics
+├── 2026-01-29-baseline/            # BIOS baseline documentation
+└── YYYY-MM-DD_HHMMSS-sweep/        # Generated sweep results
+    ├── llama-bench-results.json    # Raw benchmark data
+    ├── gpu-telemetry.jsonl         # GPU state snapshots
+    ├── config.json                 # Sweep configuration
+    └── summary.md                  # Human-readable summary
 ```
+
+## Parameter Sweep Tool
+
+`benchmark-sweep.sh` wraps the official `llama-bench` with GPU telemetry for systematic parameter optimization.
+
+### Quick Start
+
+```bash
+# Deploy to server
+scp benchmarks/benchmark-sweep.sh omni@100.94.47.77:/home/omni/
+
+# Run quick sweep (~5 min)
+ssh omni@100.94.47.77 "./benchmark-sweep.sh quick"
+
+# Run full sweep (~30 min)
+ssh omni@100.94.47.77 "./benchmark-sweep.sh full"
+
+# Run KV cache comparison
+ssh omni@100.94.47.77 "./benchmark-sweep.sh kv /path/to/model.gguf"
+
+# Custom sweep
+ssh omni@100.94.47.77 "SWEEP_NGL=5,10,15 SWEEP_FA=0,1 SWEEP_CTK=f16,q4_1 ./benchmark-sweep.sh custom"
+```
+
+### Presets
+
+| Preset | Duration | Parameters Varied |
+|--------|----------|-------------------|
+| `quick` | ~5 min | fa, ctk (limited) |
+| `full` | ~30 min | ngl, batch, ubatch, fa, ctk, split_mode |
+| `kv` | ~10 min | KV cache types only |
+| `ngl` | ~15 min | GPU layers only |
+| `batch` | ~15 min | Batch sizes only |
+| `multigpu` | ~20 min | Tensor split ratios (INFORMATIONAL ONLY) |
+| `custom` | varies | Via SWEEP_* env vars |
+
+### Architecture Note (S-021, S-031)
+
+For asymmetric VRAM (96GB + 32GB), **INDEPENDENT WORKLOADS are optimal**:
+- **S-021 tested**: tensor-split `75,25` = 8.26 tok/s vs single GPU = 11.74 tok/s (**-30% WORSE**)
+- Tensor split (`-ts`) adds PCIe overhead and wastes VRAM on the larger GPU
+- The `multigpu` preset is for verification only — NOT for production
+- See `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`
+
+### Environment Variables (for `custom` preset)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SWEEP_NGL` | 10 | GPU layers (comma-separated or range) |
+| `SWEEP_BATCH` | 2048 | Batch sizes |
+| `SWEEP_UBATCH` | 512 | Micro-batch sizes |
+| `SWEEP_FA` | 0,1 | Flash attention (0=off, 1=on) |
+| `SWEEP_CTK` | f16,q4_1 | KV cache types |
+| `SWEEP_SM` | none | Split mode (none, layer, row) |
+| `SWEEP_TS` | (empty) | Tensor split values, semicolon-separated (e.g., `;75,25;65,35`) |
+| `SWEEP_REPS` | 3 | Repetitions per config |
+| `LLAMA_BENCH` | /opt/llama.cpp-mxfp4/build/bin/llama-bench | Path to llama-bench |
+
+**Note on SWEEP_TS format**: Each value is comma-separated GPU weights (e.g., `75,25` means 75% GPU0, 25% GPU1). Use semicolons to separate different configurations to test. An empty segment means single-GPU (no tensor split).
+
+### Output
+
+Each sweep creates a timestamped directory with:
+- `llama-bench-results.json` — Raw benchmark data
+- `llama-bench.log` — Benchmark stderr/progress output
+- `gpu-telemetry.jsonl` — Pre/post GPU state (JSONL format: temp, power, ECC, clocks)
+- `config.json` — Sweep configuration
+- `summary.md` — Human-readable results table with best config
+
+---
 
 ## Current Baseline (2026-01-28)
 

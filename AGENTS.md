@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.31)
+# Protocol OMNI (v16.4.32)
 
-> **Last Updated**: 2026-01-31 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Repo Optimized**
+> **Last Updated**: 2026-02-01 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Repo Optimized**
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -11,7 +11,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | DUAL-GPU ACTIVE ✅ |
-| **Version** | v16.4.31 |
+| **Version** | v16.4.32 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 ✅ |
 | **Secondary** | **Qwen2.5-Coder-32B Q4_K_M** @ port 8001 ✅ (RTX 5090) |
 | **Current** | **11.79 tok/s** (DeepSeek-R1, Gen 5 PCIe) + **48.9 tok/s** (Qwen-Coder) |
@@ -23,7 +23,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **PCIe Status** | **PRO 6000: Gen 5 x16** ✅, **RTX 5090: Gen 4 x16** ✅ (setpci fix, service enabled) |
 | **SecureBoot** | **DISABLED** (Restored via Redfish + MOK. ✅) |
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
-| **Disk** | **2.2TB used (3.8TB free of 6TB)** — cleaned 2026-01-28 |
+| **Disk** | **1.3TB used (2.2TB free /nvme)** + **3.7TB USB @ /mnt/usb** |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120→120a auto, SM120 native) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
@@ -34,6 +34,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
 | **BIOS Backup** | `benchmarks/2026-01-29-baseline/bios_baseline.md` + server `/home/omni/bios_backup_nps4_baseline.json` |
+| **Benchmark Tool** | `benchmark-sweep.sh` deployed @ `/home/omni/` — presets: quick, full, kv, ngl, batch, multigpu |
 
 ---
 
@@ -88,6 +89,8 @@ Resolved findings (F-xxx RESOLVED, S-xxx) documented in [`docs/architecture/less
 
 ## Lessons Learned (Phase 5-6)
 
+- **2026-02-01 DeepSeek V3.2 MXFP4 Migration (S-035)**: **DOWNLOADING** `stevescot1979/DeepSeek-V3.2-MXFP4-GGUF` (387GB, 18 chunks) via aria2c @ ~100 MB/s to `/nvme/models/deepseek-v3.2-mxfp4/`. **V3.2 > R1-0528**: IMO 2025 Gold, IOI 2025 Gold, surpasses GPT-5 (Speciale variant), uses DeepSeek Sparse Attention (DSA) for better long-context. **MXFP4 quality**: Reddit claims "lower perplexity than Q4_K_M", AMD confirms "99.5% accuracy retention". Expected **2-3x speedup** on Blackwell native MXFP4 tensor cores. Monitor: `tmux attach -t aria_dl`. ETA: ~1 hour.
+- **2026-02-01 MXFP4 Quantization Feasibility (S-034)**: `llama-quantize --type MXFP4_MOE` available BUT requires FP16 → GGUF → MXFP4 workflow. AMD's pre-made MXFP4 quants are **safetensors only** (vLLM/SGLang), NOT GGUF. DeepSeek-R1-0528 FP16 = 689GB. **Space available**: 2.2TB /nvme + 3.7TB USB mounted @ `/mnt/usb`. Expected +27-31% throughput on Blackwell (native MXFP4 tensor cores). **UPDATE**: Found pre-made V3.2 MXFP4 GGUF — see S-035.
 - **2026-01-31 Speculative Decoding Tokenizer Mismatch (S-033)**: **DeepSeek-R1 uses proprietary tokenizer INCOMPATIBLE with Llama-based draft models**. `DeepSeek-R1-Distill-Llama-*` uses Llama tokenizer — speculative decoding FAILS. **CORRECT APPROACH**: Use DeepSeek's native **MTP (Multi-Token Prediction)** module instead of external draft. For other models (Llama family, Qwen), external speculative decoding works if tokenizer matches. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
 - **2026-01-31 Repository Optimization (S-032)**: Rewrote git history using `git-filter-repo` to remove large files. **Results**: `.git/` reduced from **128MB → 1.1MB** (99% reduction), tracked content **2.9MB** (265 files). Removed: BIOS CAP/dump (324MB), KVM screenshots (52MB), VBIOS ROM (1.9MB), archive markdown (10MB). Archive files preserved at `archive/historical-docs` branch. GitHub Issues (#1-#11) + ADRs (0001-0005) + issue templates added for organized tracking. **Clone size**: ~3-4MB (vs 128MB+ before).
 - **2026-01-31 Dual-GPU Optimization Deep Research (S-031)**: Comprehensive analysis of multi-GPU strategies for asymmetric VRAM (96GB + 32GB). **KEY FINDINGS**: (1) **ik_llama.cpp graph split mode** achieves 3-4x speedup BUT requires EVEN VRAM distribution — would waste 64GB on PRO 6000, **NOT RECOMMENDED**. (2) **Speculative decoding** viable upgrade path (+25-60% speedup), llama-server supports `--hf-repo-draft`. (3) **Independent workloads (current architecture) = OPTIMAL** for asymmetric VRAM — zero inter-GPU overhead, max utilization. (4) **Prefill-decode disaggregation** NOT VIABLE (requires custom implementation + KV cache bottlenecks). **Current PCIe**: RTX 5090 @ Gen 4, PRO 6000 @ Gen 5 — sufficient for independent workloads and speculative decoding; graph split limited by VRAM asymmetry not PCIe. **RECOMMENDATION**: Keep independent workloads (DeepSeek-R1 @ PRO 6000, Qwen-Coder @ RTX 5090), explore speculative decoding for single-model speedup. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
