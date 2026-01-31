@@ -61,18 +61,48 @@ sanitize_value() {
 # JSON-escape a string (handles quotes, backslashes, and all control chars U+0000-U+001F)
 json_escape() {
     local str="$1"
+    # If jq is available, use it for proper escaping
+    if command -v jq &>/dev/null; then
+        printf '%s' "$str" | jq -Rs '.[:-1] // ""' 2>/dev/null | sed 's/^"//; s/"$//' || printf '%s' "$str"
+        return
+    fi
+    # Manual escaping fallback
     str="${str//\\/\\\\}"  # escape backslashes first
     str="${str//\"/\\\"}"  # escape quotes
-    str="${str//$'\n'/\\n}"  # escape newlines
-    str="${str//$'\r'/\\r}"  # escape carriage returns
-    str="${str//$'\t'/\\t}"  # escape tabs
-    str="${str//$'\b'/\\b}"  # escape backspace
-    str="${str//$'\f'/\\f}"  # escape form feed
-    # Escape remaining control chars (U+0000-U+001F except already handled)
-    # Use sed to convert any remaining control chars to \uXXXX format
-    str=$(printf '%s' "$str" | sed 's/[\x00-\x08\x0B\x0E-\x1F]/\\u&/g' | \
-          sed 's/\\u\(.\)/\\u00/g' 2>/dev/null || printf '%s' "$str")
-    echo "$str"
+    # Escape all control characters explicitly
+    str="${str//$'\x00'/\\u0000}"
+    str="${str//$'\x01'/\\u0001}"
+    str="${str//$'\x02'/\\u0002}"
+    str="${str//$'\x03'/\\u0003}"
+    str="${str//$'\x04'/\\u0004}"
+    str="${str//$'\x05'/\\u0005}"
+    str="${str//$'\x06'/\\u0006}"
+    str="${str//$'\x07'/\\u0007}"
+    str="${str//$'\x08'/\\b}"      # backspace
+    str="${str//$'\x09'/\\t}"      # tab
+    str="${str//$'\x0A'/\\n}"      # newline
+    str="${str//$'\x0B'/\\u000B}"  # vertical tab
+    str="${str//$'\x0C'/\\f}"      # form feed
+    str="${str//$'\x0D'/\\r}"      # carriage return
+    str="${str//$'\x0E'/\\u000E}"
+    str="${str//$'\x0F'/\\u000F}"
+    str="${str//$'\x10'/\\u0010}"
+    str="${str//$'\x11'/\\u0011}"
+    str="${str//$'\x12'/\\u0012}"
+    str="${str//$'\x13'/\\u0013}"
+    str="${str//$'\x14'/\\u0014}"
+    str="${str//$'\x15'/\\u0015}"
+    str="${str//$'\x16'/\\u0016}"
+    str="${str//$'\x17'/\\u0017}"
+    str="${str//$'\x18'/\\u0018}"
+    str="${str//$'\x19'/\\u0019}"
+    str="${str//$'\x1A'/\\u001A}"
+    str="${str//$'\x1B'/\\u001B}"
+    str="${str//$'\x1C'/\\u001C}"
+    str="${str//$'\x1D'/\\u001D}"
+    str="${str//$'\x1E'/\\u001E}"
+    str="${str//$'\x1F'/\\u001F}"
+    printf '%s' "$str"
 }
 
 # GPU telemetry capture - outputs proper JSONL (one JSON object per line)
