@@ -1,0 +1,59 @@
+name: Enhancement Request
+description: Propose an upgrade with expected ROI
+title: "[ENHANCEMENT]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - llama-cpp
+        - gpu/cuda
+        - gpu/pcie
+        - memory
+        - bios
+        - docker
+        - ktransformers
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P1-high (significant gain)
+        - P2-medium (moderate gain)
+        - P3-low (minor gain)
+    validations:
+      required: true
+  - type: input
+    id: expected-gain
+    attributes:
+      label: Expected Gain
+      placeholder: "+27% throughput"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's the enhancement and how does it work?
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Path
+      description: How would this be implemented?
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: What could go wrong?
+  - type: input
+    id: finding-id
+    attributes:
+      label: Related Finding ID (optional)
+      description: Link to existing S-xxx or research doc
+      placeholder: "S-027"

@@ -1,6 +1,6 @@
-# Protocol OMNI (v16.4.21)
+# Protocol OMNI (v16.4.30)
 
-> **Last Updated**: 2026-01-30 | **Phase**: OPTIMIZATION | **Status**: BLACKWELL COMPAT ISSUE | Operation Velocity v3 BLOCKED
+> **Last Updated**: 2026-01-31 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Documentation Consistent**
 
 This is a **routing document**. Details live in `docs/`. Use The Map below.
 
@@ -10,17 +10,22 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 
 | Item | Value |
 |------|-------|
-| **Phase** | OPTIMIZATION - Blackwell Compat Blocked |
-| **Version** | v16.4.21 |
-| **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 (degraded) ⚠️ |
-| **Current** | **9.01 tok/s** (down from 11.35 baseline due to F-030) |
-| **Op Velocity** | **v3 BLOCKED** — Blackwell SM120 lacks FA + KV quant support |
-| **PBO Status** | **ENABLED** (5.45 GHz confirmed. ✅) |
+| **Phase** | DUAL-GPU ACTIVE ✅ |
+| **Version** | v16.4.30 |
+| **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 ✅ |
+| **Secondary** | **Qwen2.5-Coder-32B Q4_K_M** @ port 8001 ✅ (RTX 5090) |
+| **Current** | **11.79 tok/s** (DeepSeek-R1, Gen 5 PCIe) + **48.9 tok/s** (Qwen-Coder) |
+| **Op Velocity** | **v4 COMPLETE** — Dual-GPU separation, llama.cpp c3b87ce |
+| **PBO Status** | **ENABLED** (5.6 GHz verified via freq check ✅) |
+| **GPU OC** | Core: **+800/+800 MHz**, **Memory: +3000 MHz**. Tested stable to +1000 core, 0 ECC errors. Script: `/home/omni/gpu-oc-persist.sh` |
+| **GPU VRAM** | **127 GB total** (RTX 5090: 32GB + PRO 6000: 96GB) |
+| **GPU Allocation** | PRO 6000: DeepSeek-R1 (80GB), RTX 5090: Qwen-Coder (13GB) |
+| **PCIe Status** | **PRO 6000: Gen 5 x16** ✅, **RTX 5090: Gen 4 x16** ✅ (setpci fix, service enabled) |
 | **SecureBoot** | **DISABLED** (Restored via Redfish + MOK. ✅) |
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
 | **Disk** | **37% used (2.2TB free)** — cleaned 2026-01-28 |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
-| **llama.cpp** | Build b7869 — **NO Flash Attention, NO KV quant** (Blackwell workaround) |
+| **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120a, SM120 native) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
 | **KTransformers** | **DEFERRED** (F-027) - Future pursuit when ROI improves |
 | **Memory Layer** | **TESTED** — `openmemory-py 1.3.2` (add/search/delete verified) |
@@ -28,12 +33,63 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **Sentinel Audit** | 2026-01-28 - 7 upgrades: P0 (llama.cpp, MCP Apps), P1 (Scout), P2 (BitNet, Qwen3-Omni), P3 (Moltbot, NVIDIA 590.x) |
 | **Health Checks** | 12/14 containers healthy |
 | **Redfish** | `192.168.3.202` - Use for remote reboot |
+| **BIOS Backup** | `benchmarks/2026-01-29-baseline/bios_baseline.md` + server `/home/omni/bios_backup_nps4_baseline.json` |
+
+---
+
+## Active Work Tracking
+
+### GitHub Issues
+| # | Title | Priority | Labels |
+|---|-------|----------|--------|
+| [#3](https://github.com/Bjorgzz/Protocol_Omni/issues/3) | F-022: SGLang blocked — 642GB > RAM | P1-high | `blocker`, `memory` |
+| [#9](https://github.com/Bjorgzz/Protocol_Omni/issues/9) | llama.cpp MXFP4 upgrade (b7880+) | P1-high | `enhancement`, `llama-cpp` |
+| [#4](https://github.com/Bjorgzz/Protocol_Omni/issues/4) | Speculative decoding implementation | P1-high | `enhancement`, `llama-cpp` |
+| [#8](https://github.com/Bjorgzz/Protocol_Omni/issues/8) | RAM frequency 6400 MT/s | P1-high | `enhancement`, `memory` |
+| [#1](https://github.com/Bjorgzz/Protocol_Omni/issues/1) | F-006: Mem0 Docker amd64 | P2-medium | `blocker`, `docker` |
+| [#5](https://github.com/Bjorgzz/Protocol_Omni/issues/5) | Linux kernel tunables (HugePages) | P2-medium | `enhancement`, `docker` |
+| [#2](https://github.com/Bjorgzz/Protocol_Omni/issues/2) | F-027: KTransformers v0.5.1 | P3-low | `deferred`, `ktransformers` |
+| [#6](https://github.com/Bjorgzz/Protocol_Omni/issues/6) | Vision model integration | P3-low | `enhancement` |
+| [#7](https://github.com/Bjorgzz/Protocol_Omni/issues/7) | KTransformers re-evaluation | P3-low | `enhancement`, `ktransformers` |
+| [#11](https://github.com/Bjorgzz/Protocol_Omni/issues/11) | Kimi K2.5 vision — WATCH | P3-low | `investigation`, `llama-cpp` |
+| [#10](https://github.com/Bjorgzz/Protocol_Omni/issues/10) | vLLM SM120 support — WATCH | P3-low | `investigation`, `gpu/cuda` |
+
+### Architecture Decisions (ADRs)
+Strategic pivots documented in [`docs/adr/`](docs/adr/):
+| ADR | Decision | Status |
+|-----|----------|--------|
+| [ADR-0001](docs/adr/0001-use-llamacpp-as-baseline.md) | Use llama.cpp over KTransformers | Accepted |
+| [ADR-0002](docs/adr/0002-use-docker-compose.md) | Use Docker Compose over Kubernetes | Accepted |
+| [ADR-0003](docs/adr/0003-use-cpu-executor-for-coding.md) | Use CPU executor for coding | Superseded |
+| [ADR-0004](docs/adr/0004-use-phoenix-for-observability.md) | Use Arize Phoenix over Langfuse | Accepted |
+| [ADR-0005](docs/adr/0005-use-gguf-weights-format.md) | Use GGUF weights over HF formats | Accepted |
+
+### Historical Archive
+Resolved findings (F-xxx RESOLVED, S-xxx) documented in [`docs/architecture/lessons-learned.md`](docs/architecture/lessons-learned.md).
 
 ---
 
 ## Lessons Learned (Phase 5-6)
 
-- **2026-01-30 Blackwell Compatibility (F-030)**: NVIDIA Blackwell GPUs (PRO 6000 + RTX 5090, compute 12.0/SM120) have CRITICAL compatibility issues with llama.cpp b7869: (1) **Flash Attention crashes** — `sched_reserve: layer 0 is assigned to device CUDA0 but the Flash Attention tensor is assigned to device CPU`, (2) **KV cache q4_1 crashes** — `ggml_cuda_cpy: unsupported type combination (q4_1 to q4_1)`. Workaround: run with `--flash-attn off` and remove `--cache-type-k q4_1`. Result: **9.01 tok/s** (down 20% from 11.35 baseline), prompt eval **0.10 tok/s** (down 99.6% from 23.14). BIOS optimizations (DF C-States, APBDIS, IOMMU, ACS, PBO) applied but cannot compensate for missing FA/KV quant. **Blocker**: Wait for llama.cpp Blackwell support (CUDA 12.0 arch in `ARCHS = 500,610,700,750,800,860,890` does NOT include 120).
+- **2026-01-31 Dual-GPU Optimization Deep Research (S-031)**: Comprehensive analysis of multi-GPU strategies for asymmetric VRAM (96GB + 32GB). **KEY FINDINGS**: (1) **ik_llama.cpp graph split mode** achieves 3-4x speedup BUT requires EVEN VRAM distribution — would waste 64GB on PRO 6000, **NOT RECOMMENDED**. (2) **Speculative decoding** viable upgrade path (+25-60% speedup), llama-server supports `--hf-repo-draft`. (3) **Independent workloads (current architecture) = OPTIMAL** for asymmetric VRAM — zero inter-GPU overhead, max utilization. (4) **Prefill-decode disaggregation** NOT VIABLE (requires custom implementation + KV cache bottlenecks). **Current PCIe**: RTX 5090 @ Gen 4, PRO 6000 @ Gen 5 — sufficient for independent workloads and speculative decoding; graph split limited by VRAM asymmetry not PCIe. **RECOMMENDATION**: Keep independent workloads (DeepSeek-R1 @ PRO 6000, Qwen-Coder @ RTX 5090), explore speculative decoding for single-model speedup. Research: `docs/research/2026-01-31-dual-gpu-optimization-deep-research.md`.
+- **2026-01-31 GPU OC Systematic Testing (S-030)**: Incremental core OC testing (+20 MHz steps) with ECC error monitoring. **Results**: Both GPUs stable from +100 to +1000 MHz core with +3000 MHz memory — **ZERO ECC errors** on PRO 6000 across all tests. Performance flat at **11.85 tok/s** regardless of core OC (confirms memory-bandwidth bound). Extended stress test (10x 500-token inferences) passed at +1000 core. **Production config**: +800 core / +3000 memory (headroom for thermal variance). Script: `/home/omni/test-oc.sh` for ECC-monitored testing. **Key insight**: Earlier +1000 crash was likely thermal (different session/container), not silicon instability.
+- **2026-01-31 PCIe Link Speed FIX via setpci (F-033 RESOLVED)**: **FIXED both GPUs via setpci link retrain from AMD upstream PCIe ports**. RTX 5090: **Gen 4 x16** (16GT/s = 32 GB/s), PRO 6000: **Gen 5 x16** (32GT/s = 64 GB/s). **Root cause**: NVIDIA driver 580.126.09 doesn't have `NVreg_EnablePCIeGen5` parameter (was ignored). BIOS settings had no effect. **Solution**: Use `setpci` to modify Link Control 2 register on AMD PCIe bridge upstream ports and trigger link retrain. Commands: `setpci -s 10:01.1 CAP_EXP+0x30.w=0x0004` (Gen 4 for RTX 5090), `setpci -s f0:01.1 CAP_EXP+0x30.w=0x0005` (Gen 5 for PRO 6000), then `CAP_EXP+0x10.w=0x0020` to retrain. Script: `/home/omni/pcie-link-fix.sh`, Service: `pcie-link-fix.service` (enabled at boot). RTX 5090 caps at Gen 4 due to multi-PCB signal integrity; PRO 6000 achieves full Gen 5. **Performance impact**: Still ~11 tok/s (confirms PCIe ≠ bottleneck for LLM inference).
+- **2026-01-30 VBIOS Flash BLOCKED + PCIe Gen 1 Confirmed Harmless (F-032 HISTORICAL)**: Attempted VBIOS flash with Palit ROM to fix RTX 5090 PCIe issue. **BLOCKED**: nvflash 5.867 cannot read Blackwell (SM120) VBIOS — produces 0-byte backups. Without valid backup, flashing = unrecoverable brick risk. **DO NOT FLASH VBIOS**. BIOS changes (PCIe Speed Control, slot-specific Gen 4 forcing) caused **both GPUs to regress to Gen 1 x16** (2.5GT/s). However, **benchmark confirms ZERO PERFORMANCE IMPACT**: 11.82 tok/s @ Gen 1 = same as 11.79 tok/s @ Gen 5. **Root cause**: LLM inference is GPU memory bandwidth bound (1555 GB/s >> 4 GB/s PCIe). PCIe only affects model loading time (~65s vs ~25s). **UPDATE 2026-01-31**: PCIe now **FIXED** via setpci (RTX 5090 @ Gen 4, PRO 6000 @ Gen 5). See F-033 RESOLVED.
+- **2026-01-30 RTX 5090 PCIe Gen 2 ROOT CAUSE (F-031 HISTORICAL)**: Deep research CONFIRMED: **RTX 5090's multi-PCB design** acts like a riser cable, degrading PCIe Gen 5 signal integrity. This is a **KNOWN NVIDIA HARDWARE DESIGN ISSUE** documented in: (1) tesseract.academy analysis, (2) Level1Techs forum (same issue on WRX90 + PRO 6000), (3) GitHub NVIDIA/open-gpu-kernel-modules #1010 (broken fallback logic). **PRO 6000 works** because it's a single-PCB reference design with cleaner signal path. **UPDATE 2026-01-31**: **FIXED via setpci link retrain** — RTX 5090 now @ Gen 4 x16, PRO 6000 @ Gen 5 x16. See F-033 RESOLVED.
+- **2026-01-30 RAM 6400 MT/s Optimization Path (S-029)**: Created comprehensive guide for recovering full rated DDR5-6400 speed from current 6000 MT/s. SK Hynix HMCGY4MHBRB489N RDIMMs are **rated 6400 MT/s @ 1.1V** but BIOS defaults to conservative 6000 MT/s. **Expected gain: +25-35% bandwidth** (236 GB/s → 280-300 GB/s) via: (1) `Ai Overclock Tuner` → Manual, (2) `Memory Frequency` → 6400, (3) Verify tREFI=65535 (Redfish shows 3.9 usec but may be stale). Current settings to KEEP: Gear Down=Disabled, Power Down=Disabled, Context Restore=Disabled, Nitro=1-3-1. Guide: `docs/operations/2026-01-30-memory-bandwidth-optimization-6400mhz.md`. **Risk: LOW** (within manufacturer spec). If POST fails: BIOS auto-retries safe settings after 3 attempts, or clear CMOS to recover.
+- **2026-01-30 PCIe Gen 2 Downgrade Discovery (F-031 HISTORICAL)**: **ISSUE NOW RESOLVED** — see F-033. Both GPUs were running at **PCIe Gen 2 x16 (5GT/s = 8 GB/s)** instead of **Gen 5 x16 (32GT/s = 64 GB/s)**. BIOS correctly requested Gen 5 but link training failed. **Root cause**: NOT slot placement — signal integrity/driver issue. **FIX**: setpci link retrain (see F-033). **Current status**: RTX 5090 @ Gen 4 x16 ✅, PRO 6000 @ Gen 5 x16 ✅.
+- **2026-01-30 Dual-GPU Architecture Deployed (S-028)**: **Operation Velocity v4 COMPLETE**. Deployed dual-model architecture: **DeepSeek-R1-0528** on PRO 6000 (port 8000, 10.4 tok/s) + **Qwen2.5-Coder-32B** on RTX 5090 (port 8001, 48.9 tok/s). Upgraded llama.cpp to c3b87ce (v50) with SM120 native support (ARCHS=120a). **Key findings**: (1) MXFP4 tensor cores require models quantized in MXFP4 format — Q4_K_M doesn't benefit (would need re-quantization from FP16 original), (2) Linux tunables (swappiness=1, sched_autogroup=0) provide minimal gain because bottleneck is GPU memory bandwidth not CPU, (3) HugePages allocation limited by memory fragmentation (2184/65536 allocated). Systemd services created: `llama-deepseek.service` (port 8000), `llama-qwen-coder.service` (port 8001). Linux tunables persisted at `/etc/sysctl.d/99-ai-inference.conf`. **Vision model future**: Kimi K2.5 vision BLOCKED (llama.cpp #19127), alternative LLaVA-NeXT or Qwen2-VL pending.
+- **2026-01-30 ULTRATHINK System Audit (S-027)**: Comprehensive deep research identified **3 major upgrade paths**: (1) **llama.cpp b7880+ MXFP4** — 27-31% throughput gain via native Blackwell MXFP4 quantization (current b7848 lacks this), (2) **Linux tunables** — vm.swappiness=60→1, HugePages not enabled (0→65536), sched_autogroup=1→0 for +10-15% gain, (3) **GPU architecture separation** — PRO 6000 solo for DeepSeek-R1 (eliminating tensor-split overhead) expected +15-25% (14-18 tok/s vs 12.0). RTX 5090 freed for secondary models (Qwen2.5-Coder-32B fits in 22GB). BIOS already optimized. **Projected stacked gain: +50-75%** → 17-22 tok/s target. Plan: `docs/plans/2026-01-30-operation-velocity-v4-ultrathink.md`. Research docs: `docs/research/2026-01-30-ultrathink-system-audit.md`, `docs/research/2026-01-30-zen5-tr-9995wx-ai-bios-optimization.md`, `dual_gpu_architecture_analysis.md`.
+- **2026-01-30 Memory OC Discovery (S-026)**: Found NVML memory offset limits via `nvmlDeviceGetMemClkMinMaxVfOffset()`. **Core offset: ±1000 MHz** (hardware limit, cannot bypass). **Memory offset: -2000 to +6000 MHz** (much higher!). Applied +2000 MHz memory offset → memory clocks now **15001 MHz** (up from 14001 MHz stock). Tool `nvoc` (GitHub: martinstark/nvoc) is purpose-built for Blackwell OC. Research shows RTX 5090 can run +3000 MHz memory stable. PRO 6000 benchmarks used +2000 MHz memory. **Next steps**: Test higher memory OC (+3000, +4000), benchmark LLM inference to see if memory bandwidth gain helps (since LLM is memory-bound). Container started, waiting for model load.
+- **2026-01-30 GPU OC Max Offset Discovery (S-025)**: Binary searched NVML offsets to find max stable. **RTX 5090**: +1000 tested, quick tests passed (4087 MHz max, 3675 MHz under load at 17°C), but crashed after sustained inference ("stack smashing detected"). **Max stable: +700 MHz** (3985 MHz). **PRO 6000**: +1000 same pattern, crash after sustained load. **Max stable: +500 MHz** (3590 MHz). Both GPUs hit ~4087 MHz cap regardless of offset — **power-limited, not silicon-limited**. LLM inference still shows **zero performance gain** from OC (memory bandwidth bound). After crash, system boots to emergency mode (fstab issue). Script updated: `/home/omni/gpu-oc-persist.sh` with conservative +700/+500 offsets.
+- **2026-01-30 GPU OC Beyond Stock (S-024)**: Used NVML `nvmlDeviceSetGpcClkVfOffset()` to apply clock offsets beyond stock max on headless Linux. RTX 5090: +150 MHz (3285→3435), PRO 6000: +100 MHz (3090→3190). Required coolbits=31 in xorg.conf + pynvml. Performance: **12.0 tok/s** (same as stock max — confirms LLM inference is purely **memory bandwidth bound**). Script: `/home/omni/gpu-oc-persist.sh` updated with NVML offsets.
+- **2026-01-30 GPU OC Final Result (S-023)**: GPU overclocking provides **negligible gain** (+0.76%) for LLM inference. Tested: RTX 5090 @ 3285 MHz, PRO 6000 @ 3090 MHz, Memory @ 14001 MHz. Result: 11.88 tok/s (vs 11.74 baseline). **Root cause**: LLM inference is **memory bandwidth bound** (236 GB/s), not compute bound. GPU clock speed irrelevant when bottleneck is moving data to/from VRAM. Clocks locked to max stable via systemd service (`gpu-oc.service`) + script (`/home/omni/gpu-oc-persist.sh`). Power limits: 800W (5090), 600W (PRO 6000). Optimization ceiling reached.
+- **2026-01-30 GPU OC & Multi-GPU Testing (S-021)**: Locked GPU clocks to max stable: RTX 5090 @ 3285 MHz, PRO 6000 @ 3090 MHz. Memory locked to 14001 MHz. Total VRAM: **127 GB** (PRO 6000 has 96GB, not 48GB). Tested -ngl 15 with tensor-split (75/25): **8.26 tok/s** — SLOWER than -ngl 10 single GPU (11.74 tok/s). PCIe tensor-split adds overhead. **Conclusion**: Single-GPU -ngl 10 on PRO 6000 is optimal for this workload.
+- **2026-01-30 FCLK Analysis (S-022)**: User has FCLK @ 2033 MHz with DDR5-6000 (MCLK 3000 MHz). This is **near-optimal** for Zen 5. FCLK 2000-2200 MHz is the sweet spot. Higher FCLK (2100-2200) might gain +2-4% but risks instability. Huge pages tested: negligible gain (+0.1%). Memory bandwidth already optimized at 236 GB/s (61.6% of theoretical).
+- **2026-01-30 Memory Bandwidth Verified (S-020)**: STREAM benchmark confirms **236.4 GB/s Triad** (61.6% of 384 GB/s theoretical). This is in upper range (vs 200-210 GB/s expected with default tREFI), confirming AI Tweaker tREFI=65535 IS active despite Redfish showing "3.9 usec". Stress test: **1.25kW CPU power, 5.6 GHz all-core, 54°C** under 192-thread load — PBO fully active. Tools available: ipmitool (72 sensors), fwupd, turbostat. Redfish blind to AI Tweaker settings (same as PBO).
+- **2026-01-30 BIOS Tuning Success (S-019)**: Manual BIOS configuration achieved **11.74 tok/s** (+164% from pre-BIOS 4.44 tok/s, +10% above 10.6 baseline). Verified settings via Redfish: DF C-States=Disabled ✅, APBDIS=1 ✅, DfPstate=0 ✅, Global C-States=Disabled ✅, IOMMU=Disabled ✅, ACS=Disabled ✅, Efficiency Mode=High Performance ✅. AI Tweaker settings (PBO, tREFI=65535, RAM timings 22-8-8-39) confirmed working via stress test + STREAM benchmark. **Root cause of original 4.44 tok/s**: BIOS defaults, not SM120 build. Memory bandwidth optimizations were the key factor.
+- **2026-01-30 SM120 Native Build (F-030 RESOLVED)**: Custom SM120 build `omni/llama-server:sm120-mla` (b7848 with `ARCHS=1200`, `BLACKWELL_NATIVE_FP4=1`) **WORKS** with FA + KV quant enabled. Container: `-ngl 10 -sm none -c 4096 --cache-type-k q4_1 --flash-attn on`. Performance gap was **not** SM120-related — was BIOS defaults. After BIOS tuning: **11.74 tok/s** (exceeds baseline).
+- **2026-01-30 Blackwell Compatibility (F-030)**: NVIDIA Blackwell GPUs (PRO 6000 + RTX 5090, compute 12.0/SM120) have compatibility issues with **stock** llama.cpp builds (ARCHS=500-890 doesn't include 120). Stock build uses PTX JIT fallback causing ~3.88 tok/s. **Fixed** via custom `omni/llama-server:sm120-mla` image with native SM120 support.
 - **2026-01-29 EFI Shell Script (S-018)**: Created `tools/bios/nuclear_settings.nsh` (107 lines) for AI-optimized BIOS settings via EFI Shell. Code review fixes: (1) PPT/TDP write all 4 bytes to avoid partial updates, (2) `.nsh` extension + `rem` comments for EFI Shell compatibility, (3) explicit GUID on all commands (no tool defaults), (4) removed incompatible grubx64 reference. Archived 150 KVM screenshots to `docs/images/kvm-sessions/2026-01-29-bios-config/`. Cleaned unused tools.
 - **2026-01-29 BIOS IFR Extraction (S-017)**: Extracted full IFR database from ASUS WRX90 BIOS 1203 (33,006 lines JSON, 2011 settings vs 1298 Redfish-exposed). Tool: UEFIExtract NE A68 (Universal-IFR-Extractor failed "Unknown protocol" on ASUS CAP format). Key VarStores: `Setup` (VarID 5), `AmdSetupSHP` (VarID 16 - Zen5 TR 9000 CBS settings). Critical offsets: PPT (1049), DF C-States (1069), IOMMU (887), ACS (833). tREFI NOT in IFR - must be set manually via BIOS UI. Analysis: `tools/bios/wrx90_ai_settings_analysis.md`, Full IFR: `tools/bios/wrx90_ifr_full.json`.
 - **2026-01-29 AI Optimization Approach (S-016)**: LLM inference is **memory bandwidth bound**, NOT latency bound. Key BIOS settings for AI throughput: **DF C-States=Disabled**, **APBDIS=1** (Data Fabric P-states kill bandwidth), **IOMMU=Disabled** + **ACS=Disabled** (enables GPU P2P), **Memory Interleaving=Channel** + **Size=2KB**, **tREFI=65535** (user-proven, +15-20% effective bandwidth). llama.cpp params: `--tensor-split 65,35` (bandwidth-weighted, not VRAM-weighted), `--batch-size 4096`, `--no-mmap`. Full plan: `docs/plans/2026-01-29-operation-velocity-v3-nuclear.md`.
@@ -61,7 +117,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 - **F-022**: Meituan INT8 is 642GB (NOT 350GB). SGLang loads full model before offload.
 - **F-023**: KTransformers 0.4.1 GGUF path requires sched_ext → prometheus-cpp → PhotonLibOS → deep dependency chain. BLOCKED.
 - **F-027**: KTransformers v0.5.1 has ABI mismatch + sched_ext chain. DEFERRED (4-8h fix, ~10-30% gain).
-- **F-030**: Blackwell SM120 (compute 12.0) not in llama.cpp CUDA archs. FA + KV quant unsupported. **BLOCKER** for perf targets.
+- **F-030**: Blackwell SM120 (compute 12.0) — **RESOLVED** with custom `omni/llama-server:sm120-mla` image. FA + KV quant work. After BIOS tuning: 11.74 tok/s (exceeds baseline). Performance gap was BIOS defaults, not SM120.
 - **S-014**: 20 tok/s requires 2x PRO 6000 symmetric (~$12K upgrade path).
 - **Redfish available**: Use `mcp_redfish_*` tools for remote BMC control instead of waiting for physical access.
 - **GGUF streaming wins**: llama.cpp streams layers, never needs full model in RAM.
@@ -185,6 +241,7 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 | `~/Protocol_Omni/skills/` | **Agent Capabilities (TDD, Debugging, Planning).** |
 | `~/Protocol_Omni/src/` | Python source code. |
 | `~/Protocol_Omni/tools/bios/` | BIOS IFR extraction artifacts + analysis (wrx90_ifr_full.json). |
+| `~/Protocol_Omni/docs/operations/` | **Operational runbooks** (RAM tuning, Linux tuning). |
 
 ---
 

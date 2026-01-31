@@ -1,0 +1,54 @@
+name: Blocker Report
+description: Report a blocking issue preventing progress
+title: "[BLOCKER]: "
+labels: ["blocker"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - llama-cpp
+        - gpu/cuda
+        - gpu/pcie
+        - memory
+        - bios
+        - docker
+        - ktransformers
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0-critical (blocks production)
+        - P1-high (should fix soon)
+        - P2-medium (nice to have)
+        - P3-low (future/monitor)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's blocked and why?
+      placeholder: "SGLang requires 642GB but only 584GB addressable..."
+    validations:
+      required: true
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root Cause (if known)
+      description: What's causing the block?
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (if any)
+      description: Is there a temporary solution?
+  - type: input
+    id: finding-id
+    attributes:
+      label: Finding ID (optional)
+      description: Link to existing F-xxx if migrating
+      placeholder: "F-022"

@@ -1,0 +1,45 @@
+name: Investigation (WATCH)
+description: Track an external dependency or emerging option
+title: "[WATCH]: "
+labels: ["investigation"]
+body:
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream Issue/PR
+      description: Link to external issue being watched
+      placeholder: "https://github.com/ggml-org/llama.cpp/issues/19127"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - llama-cpp
+        - gpu/cuda
+        - memory
+        - docker
+        - ktransformers
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What are we watching and why?
+    validations:
+      required: true
+  - type: textarea
+    id: trigger
+    attributes:
+      label: Action Trigger
+      description: What needs to happen before we can proceed?
+    validations:
+      required: true
+  - type: textarea
+    id: expected-benefit
+    attributes:
+      label: Expected Benefit
+      description: What do we gain when this unblocks?
