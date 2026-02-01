@@ -23,7 +23,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | **PCIe Status** | **PRO 6000: Gen 5 x16** ✅, **RTX 5090: Gen 4 x16** ✅ (setpci fix, service enabled) |
 | **SecureBoot** | **DISABLED** (Restored via Redfish + MOK. ✅) |
 | **NPS Status** | **NPS1** (Restored post-reset. ✅) |
-| **Disk** | **1.5TB used (2.0TB free /nvme, 3.6TB total)** + **3.7TB USB @ /mnt/usb** — **7.3TB total** |
+| **Disk** | **1.5TB used (2.1TB free /nvme, 3.6TB total)** + **3.7TB USB @ /mnt/usb** — **7.3TB total** |
 | **Backup** | DeepSeek-R1 Q4_K_M (377GB) — original Oracle |
 | **llama.cpp** | `/opt/llama.cpp-mxfp4` (c3b87ce v50, ARCHS=120→120a auto, SM120 native) |
 | **SGLang** | **BLOCKED** (F-022) - 642GB > 584GB addressable |
