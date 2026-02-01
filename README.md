@@ -93,21 +93,46 @@ nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv
 
 ```
 Protocol_Omni/
-├── README.md              # This file
-├── AGENTS.md              # AI agent operational doctrine (routing document)
-├── skills/                # Agent capability library (TDD, Debugging, Planning)
-│   ├── systematic-debugging/SKILL.md
-│   ├── sentinel-doc-sync/SKILL.md
-│   └── test-driven-development/SKILL.md
-├── docker/                # Docker Compose stacks
-│   └── omni-stack.yaml    # Support services (Phoenix, Qdrant, Memgraph)
-├── docs/                  # Documentation
-│   ├── architecture/      # Tech stack, lessons learned
-│   ├── adr/               # Architecture Decision Records
-│   ├── operations/        # Runbooks (RAM tuning, GPU OC)
-│   └── research/          # Deep research docs
-├── benchmarks/            # Performance baselines
-└── tools/                 # Utilities (BIOS analysis)
+├── README.md                  # This file
+├── AGENTS.md                  # AI agent operational doctrine (routing document)
+├── benchmarks/                # Performance baselines & sweep tool
+│   ├── benchmark-sweep.sh     # GPU parameter sweep script
+│   ├── 2026-01-28-pre-optimization/
+│   └── 2026-01-29-baseline/
+├── config/                    # Configuration files
+│   ├── mcp-allowlist.yaml     # MCP security allowlist
+│   └── agent_stack.yaml       # Agent configuration
+├── docker/                    # Docker Compose stacks
+│   ├── omni-stack.yaml        # Main services (Phoenix, Qdrant, Memgraph)
+│   ├── memory-stack.yaml      # Memory services
+│   └── observability-stack.yaml
+├── docs/                      # Documentation
+│   ├── adr/                   # Architecture Decision Records (0001-0005)
+│   ├── architecture/          # Tech stack, lessons learned, evaluations
+│   ├── operations/            # Runbooks (RAM tuning, GPU OC, Linux tuning)
+│   ├── plans/                 # Active operational plans
+│   │   └── archive/           # Completed/superseded plans
+│   ├── research/              # Deep research docs (GPU, BIOS, multi-GPU)
+│   └── security/              # Security overview
+├── scripts/                   # Operational scripts
+│   └── persistence/           # Boot-time persistence scripts
+├── skills/                    # Agent capability library (20+ skills)
+│   ├── systematic-debugging/  # Debugging methodology
+│   ├── sentinel-doc-sync/     # Documentation sync
+│   ├── test-driven-development/
+│   ├── performance-engineer/  # Performance optimization
+│   ├── sre-engineer/          # Site reliability
+│   └── ...                    # See skills/ for full list
+├── src/                       # Python source code
+│   ├── agent/                 # LangGraph agent (graph.py, nodes/)
+│   ├── mcp_proxy/             # MCP security proxy
+│   ├── memory/                # Memory layer (OpenMemory)
+│   └── knowledge/             # Knowledge graph integration
+├── tests/                     # Test suite
+│   ├── unit/                  # Unit tests
+│   └── integration/           # Integration tests
+└── tools/                     # Utilities
+    └── bios/                  # BIOS IFR extraction & analysis
 ```
 
 ## Documentation
@@ -158,7 +183,7 @@ See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
 | Mem0 Docker amd64 fix | Unblock memory layer | [#1](https://github.com/Bjorgzz/Protocol_Omni/issues/1) |
 | Linux kernel tunables (HugePages) | +10-15% perf | [#5](https://github.com/Bjorgzz/Protocol_Omni/issues/5) |
 | `mcp_sovereign_status` MCP tool | Replace status script | Phase 4.5 carryover |
-| Clawdbot evaluation | Unified messaging | Phase 4.5 carryover |
+| OpenClaw evaluation | Unified messaging | Phase 4.5 carryover |
 
 ### Planned (P3 - Low Priority)
 
