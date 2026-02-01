@@ -221,7 +221,7 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 | **Bare Metal Build** | Docker VMM disabled = 300% perf regression. | [§5 F-003](docs/architecture/lessons-learned.md#f-003-cuda-vmm--300-regression) |
 | **MCP Proxy** | All tool calls via `:8070` (Default Deny policy). | [Security](docs/security/overview.md) |
 | **Health Checks** | Use `wget`/`python urllib` NOT `curl` in Docker. | [§5 F-021](docs/architecture/lessons-learned.md#f-021-health-checks) |
-| **Mandatory Sync** | Before ANY "done" claim: `sentinel-doc-sync` + `brv curate`. | [Post-Session Protocol](#post-session-protocol-mandatory) |
+| **Mandatory Sync** | Before ANY "done": (1) verify commands, (2) `sentinel-doc-sync`, (3) `brv curate`. | [Post-Session Protocol](#post-session-protocol-mandatory) |
 
 ---
 
