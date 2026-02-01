@@ -149,8 +149,18 @@ Protocol_Omni/
 │   │   ├── cpu-perf.service
 │   │   └── gpu-perf.service
 │   ├── _archive/                # Deprecated scripts
+│   │   ├── consciousness_loop.sh
+│   │   ├── generate_status.py
+│   │   └── test_agent_connection.py
 │   ├── _archive_deprecated/     # Fully deprecated
+│   │   ├── benchmark-kt.sh
+│   │   ├── build_ktransformers.sh
+│   │   ├── build-bleeding-edge.sh
+│   │   └── kt-sglang-deploy.sh
 │   └── _archive_proxmox/        # Proxmox-specific
+│       ├── phase1-host-hardening.sh
+│       ├── run-phase1.command
+│       └── verify-phase1.command
 │
 ├── skills/                      # Sovereign Skill Library
 │   ├── brainstorming/
@@ -197,7 +207,10 @@ Protocol_Omni/
 │   │   ├── defense-in-depth.md
 │   │   ├── find-polluter.sh
 │   │   ├── root-cause-tracing.md
-│   │   └── test-*.md              # Test pressure docs
+│   │   ├── test-academic.md
+│   │   ├── test-pressure-1.md
+│   │   ├── test-pressure-2.md
+│   │   └── test-pressure-3.md
 │   ├── test-driven-development/
 │   │   ├── SKILL.md
 │   │   └── testing-anti-patterns.md
