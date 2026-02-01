@@ -133,6 +133,8 @@ See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
 
 ## Roadmap
 
+> **Project Index**: See [Project Structure](#project-structure) for file/folder layout, [AGENTS.md](AGENTS.md) for operational routing.
+
 ### In Progress
 
 | Task | Status | Details |
@@ -149,23 +151,41 @@ See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
 | Speculative decoding | +25-60% tok/s (DeepSeek MTP) | [#4](https://github.com/Bjorgzz/Protocol_Omni/issues/4) |
 | llama.cpp MXFP4 build | b7880+ with SM120 MXFP4 | [#9](https://github.com/Bjorgzz/Protocol_Omni/issues/9) |
 
-### Planned (P2-P3 - Medium/Low Priority)
+### Planned (P2 - Medium Priority)
 
-| Task | Priority | Issue |
-|------|----------|-------|
-| Mem0 Docker amd64 fix | P2 | [#1](https://github.com/Bjorgzz/Protocol_Omni/issues/1) |
-| Linux kernel tunables (HugePages) | P2 | [#5](https://github.com/Bjorgzz/Protocol_Omni/issues/5) |
-| Vision model integration | P3 | [#6](https://github.com/Bjorgzz/Protocol_Omni/issues/6) |
-| KTransformers re-evaluation | P3 | [#7](https://github.com/Bjorgzz/Protocol_Omni/issues/7) |
+| Task | Target | Notes |
+|------|--------|-------|
+| Mem0 Docker amd64 fix | Unblock memory layer | [#1](https://github.com/Bjorgzz/Protocol_Omni/issues/1) |
+| Linux kernel tunables (HugePages) | +10-15% perf | [#5](https://github.com/Bjorgzz/Protocol_Omni/issues/5) |
+| `mcp_sovereign_status` MCP tool | Replace status script | Phase 4.5 carryover |
+| Clawdbot evaluation | Unified messaging | Phase 4.5 carryover |
+
+### Planned (P3 - Low Priority)
+
+| Task | Target | Notes |
+|------|--------|-------|
+| Vision model integration | Multimodal | [#6](https://github.com/Bjorgzz/Protocol_Omni/issues/6) |
+| NVIDIA Driver 580→590 | Post-benchmark | Phase 4.5 carryover |
+| NVIDIA Dynamo sandbox | Distributed inference | Phase 4.5 carryover |
+| `/v1/introspect` + CronJob | Replace script | Phase 4.5 carryover |
 
 ### Blocked / Deferred
 
-| Item | Reason | Status |
-|------|--------|--------|
-| **SGLang** | 642GB > 584GB addressable RAM | [#3](https://github.com/Bjorgzz/Protocol_Omni/issues/3) BLOCKED |
-| **KTransformers** | ABI mismatch + sched_ext chain | [#2](https://github.com/Bjorgzz/Protocol_Omni/issues/2) DEFERRED |
-| **vLLM** | SM120 (Blackwell) not supported | [#10](https://github.com/Bjorgzz/Protocol_Omni/issues/10) WATCHING |
-| **Kimi K2.5 Vision** | llama.cpp #19127 vision blocked | [#11](https://github.com/Bjorgzz/Protocol_Omni/issues/11) WATCHING |
+| Item | Reason | Unblock Criteria | Status |
+|------|--------|------------------|--------|
+| **SGLang** | 642GB > 584GB addressable RAM | Wait for offload support | [#3](https://github.com/Bjorgzz/Protocol_Omni/issues/3) BLOCKED |
+| **KTransformers** | ABI mismatch + sched_ext chain | Re-evaluate when deps stabilize | [#2](https://github.com/Bjorgzz/Protocol_Omni/issues/2), [#7](https://github.com/Bjorgzz/Protocol_Omni/issues/7) DEFERRED |
+| **vLLM** | SM120 (Blackwell) not supported | Wait for upstream fix | [#10](https://github.com/Bjorgzz/Protocol_Omni/issues/10) WATCHING |
+| **Kimi K2.5 Vision** | llama.cpp #19127 vision blocked | Wait for upstream fix | [#11](https://github.com/Bjorgzz/Protocol_Omni/issues/11) WATCHING |
+
+### Watching (Future Evaluation)
+
+| Item | Trigger | Notes |
+|------|---------|-------|
+| GLM-4.7 GGUF | When available | Phase 4.5 P4 |
+| Llama 4 Scout API | VRAM constraints resolved | Deferred from Sentinel Audit |
+| BitNet models | Maturity + GGUF support | Sentinel Audit Week 2-4 |
+| Qwen3-Omni | Multimodal readiness | Sentinel Audit Week 2-4 |
 
 ### Memory Layer
 
@@ -180,6 +200,7 @@ See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
 |-----|----------|--------|
 | [ADR-0001](docs/adr/0001-use-llamacpp-as-baseline.md) | llama.cpp over KTransformers | Accepted |
 | [ADR-0002](docs/adr/0002-use-docker-compose.md) | Docker Compose over Kubernetes | Accepted |
+| [ADR-0003](docs/adr/0003-use-cpu-executor-for-coding.md) | CPU executor for coding | **Superseded** |
 | [ADR-0004](docs/adr/0004-use-phoenix-for-observability.md) | Arize Phoenix over Langfuse | Accepted |
 | [ADR-0005](docs/adr/0005-use-gguf-weights-format.md) | GGUF over HF formats | Accepted |
 
