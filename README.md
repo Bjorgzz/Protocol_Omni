@@ -1,4 +1,4 @@
-# Protocol OMNI v16.4.31: SOVEREIGN COGNITION
+# Protocol OMNI v16.4.32: SOVEREIGN COGNITION
 
 Self-evolving AI infrastructure on bare metal Blackwell silicon.
 
@@ -6,9 +6,9 @@ Self-evolving AI infrastructure on bare metal Blackwell silicon.
 
 ## Overview
 
-Protocol OMNI v16.4.31 is a self-hosted AI inference stack running on Ubuntu 24.04 with dual NVIDIA Blackwell GPUs (96GB + 32GB). Following the **Concrete Bunker Doctrine**, it uses llama.cpp with native SM120 compilation for maximum stability.
+Protocol OMNI v16.4.32 is a self-hosted AI inference stack running on Ubuntu 24.04 with dual NVIDIA Blackwell GPUs (96GB + 32GB). Following the **Concrete Bunker Doctrine**, it uses llama.cpp with native SM120 compilation for maximum stability.
 
-**v16.4.31 (Phase 6)**: Dual-GPU independent workloads, bare-metal llama.cpp, repository optimized.
+**v16.4.32 (Phase 6)**: Dual-GPU independent workloads, V3.2 MXFP4 migration in progress, repository optimized.
 
 ```mermaid
 graph TB
@@ -130,6 +130,60 @@ Protocol_Omni/
 | **Inference** | llama.cpp only. SGLang/vLLM blocked. |
 
 See [Lessons Learned](docs/architecture/lessons-learned.md) for full details.
+
+## Roadmap
+
+### In Progress
+
+| Task | Status | Details |
+|------|--------|---------|
+| **DeepSeek V3.2 MXFP4** | ▶️ Downloading | 387GB MXFP4 GGUF → `/nvme/models/` |
+| **benchmark-sweep.sh** | ✅ Code complete | GPU parameter sweep tool |
+
+### Planned (P1 - High Priority)
+
+| Task | Target | Issue |
+|------|--------|-------|
+| V3.2 MXFP4 deployment | 2-3x speedup (Blackwell native MXFP4) | — |
+| RAM 6400 MT/s upgrade | +25-35% memory bandwidth | [#8](https://github.com/Bjorgzz/Protocol_Omni/issues/8) |
+| Speculative decoding | +25-60% tok/s (DeepSeek MTP) | [#4](https://github.com/Bjorgzz/Protocol_Omni/issues/4) |
+| llama.cpp MXFP4 build | b7880+ with SM120 MXFP4 | [#9](https://github.com/Bjorgzz/Protocol_Omni/issues/9) |
+
+### Planned (P2-P3 - Medium/Low Priority)
+
+| Task | Priority | Issue |
+|------|----------|-------|
+| Mem0 Docker amd64 fix | P2 | [#1](https://github.com/Bjorgzz/Protocol_Omni/issues/1) |
+| Linux kernel tunables (HugePages) | P2 | [#5](https://github.com/Bjorgzz/Protocol_Omni/issues/5) |
+| Vision model integration | P3 | [#6](https://github.com/Bjorgzz/Protocol_Omni/issues/6) |
+| KTransformers re-evaluation | P3 | [#7](https://github.com/Bjorgzz/Protocol_Omni/issues/7) |
+
+### Blocked / Deferred
+
+| Item | Reason | Status |
+|------|--------|--------|
+| **SGLang** | 642GB > 584GB addressable RAM | [#3](https://github.com/Bjorgzz/Protocol_Omni/issues/3) BLOCKED |
+| **KTransformers** | ABI mismatch + sched_ext chain | [#2](https://github.com/Bjorgzz/Protocol_Omni/issues/2) DEFERRED |
+| **vLLM** | SM120 (Blackwell) not supported | [#10](https://github.com/Bjorgzz/Protocol_Omni/issues/10) WATCHING |
+| **Kimi K2.5 Vision** | llama.cpp #19127 vision blocked | [#11](https://github.com/Bjorgzz/Protocol_Omni/issues/11) WATCHING |
+
+### Memory Layer
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **OpenMemory** | ✅ TESTED | `openmemory-py 1.3.2` — add/search/delete verified |
+| Mem0 | ❌ BLOCKED | Docker image arm64 only (F-006) |
+
+### Architecture Decisions
+
+| ADR | Decision | Status |
+|-----|----------|--------|
+| [ADR-0001](docs/adr/0001-use-llamacpp-as-baseline.md) | llama.cpp over KTransformers | Accepted |
+| [ADR-0002](docs/adr/0002-use-docker-compose.md) | Docker Compose over Kubernetes | Accepted |
+| [ADR-0004](docs/adr/0004-use-phoenix-for-observability.md) | Arize Phoenix over Langfuse | Accepted |
+| [ADR-0005](docs/adr/0005-use-gguf-weights-format.md) | GGUF over HF formats | Accepted |
+
+> **Full tracking**: See [AGENTS.md](AGENTS.md) for operational details and [GitHub Issues](https://github.com/Bjorgzz/Protocol_Omni/issues) for all work items.
 
 ## IDE Configuration
 
