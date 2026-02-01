@@ -91,49 +91,20 @@ nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv
 
 ## Project Structure
 
-```
-Protocol_Omni/
-├── README.md                  # This file
-├── AGENTS.md                  # AI agent operational doctrine (routing document)
-├── benchmarks/                # Performance baselines & sweep tool
-│   ├── benchmark-sweep.sh     # GPU parameter sweep script
-│   ├── 2026-01-28-pre-optimization/
-│   └── 2026-01-29-baseline/
-├── config/                    # Configuration files
-│   ├── mcp-allowlist.yaml     # MCP security allowlist
-│   └── agent_stack.yaml       # Agent configuration
-├── docker/                    # Docker Compose stacks
-│   ├── omni-stack.yaml        # Main services (Phoenix, Qdrant, Memgraph)
-│   ├── memory-stack.yaml      # Memory services
-│   └── observability-stack.yaml
-├── docs/                      # Documentation
-│   ├── adr/                   # Architecture Decision Records (0001-0005)
-│   ├── architecture/          # Tech stack, lessons learned, evaluations
-│   ├── operations/            # Runbooks (RAM tuning, GPU OC, Linux tuning)
-│   ├── plans/                 # Active operational plans
-│   │   └── archive/           # Completed/superseded plans
-│   ├── research/              # Deep research docs (GPU, BIOS, multi-GPU)
-│   └── security/              # Security overview
-├── scripts/                   # Operational scripts
-│   └── persistence/           # Boot-time persistence scripts
-├── skills/                    # Agent capability library (20+ skills)
-│   ├── systematic-debugging/  # Debugging methodology
-│   ├── sentinel-doc-sync/     # Documentation sync
-│   ├── test-driven-development/
-│   ├── performance-engineer/  # Performance optimization
-│   ├── sre-engineer/          # Site reliability
-│   └── ...                    # See skills/ for full list
-├── src/                       # Python source code
-│   ├── agent/                 # LangGraph agent (graph.py, nodes/)
-│   ├── mcp_proxy/             # MCP security proxy
-│   ├── memory/                # Memory layer (OpenMemory)
-│   └── knowledge/             # Knowledge graph integration
-├── tests/                     # Test suite
-│   ├── unit/                  # Unit tests
-│   └── integration/           # Integration tests
-└── tools/                     # Utilities
-    └── bios/                  # BIOS IFR extraction & analysis
-```
+> **Complete Index**: [STRUCTURE.md](STRUCTURE.md) — Full file/folder listing (339 lines)
+
+| Directory | Purpose |
+|-----------|---------|
+| `AGENTS.md` | Operational routing document — **START HERE** |
+| `benchmarks/` | Performance baselines + `benchmark-sweep.sh` tool |
+| `config/` | Runtime configs (MCP allowlist, agent stack) |
+| `docker/` | Docker Compose stacks (omni, memory, observability) |
+| `docs/` | Documentation root (ADRs, architecture, ops, research) |
+| `scripts/` | Operational scripts + systemd persistence |
+| `skills/` | Agent capability library (20+ skills) |
+| `src/` | Python source (agent, mcp_proxy, memory, knowledge) |
+| `tests/` | Test suite (unit + integration) |
+| `tools/` | Utilities (BIOS IFR extraction) |
 
 ## Documentation
 
