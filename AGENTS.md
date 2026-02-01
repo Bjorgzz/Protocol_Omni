@@ -1,4 +1,4 @@
-# Protocol OMNI (v16.4.32)
+# Protocol OMNI (v16.4.33)
 
 > **Last Updated**: 2026-02-01 | **Phase**: DUAL-GPU ACTIVE | **Status**: STABLE | **Repo Optimized**
 
@@ -11,7 +11,7 @@ This is a **routing document**. Details live in `docs/`. Use The Map below.
 | Item | Value |
 |------|-------|
 | **Phase** | DUAL-GPU ACTIVE ✅ |
-| **Version** | v16.4.32 |
+| **Version** | v16.4.33 |
 | **Production** | **DeepSeek-R1-0528 Q4_K_M** @ port 8000 ✅ |
 | **Secondary** | **Qwen2.5-Coder-32B Q4_K_M** @ port 8001 ✅ (RTX 5090) |
 | **Current** | **11.79 tok/s** (DeepSeek-R1, Gen 5 PCIe) + **48.9 tok/s** (Qwen-Coder) |
@@ -221,6 +221,7 @@ Before starting ANY task, you must check the Sovereign Skill Library at `~/Proto
 | **Bare Metal Build** | Docker VMM disabled = 300% perf regression. | [§5 F-003](docs/architecture/lessons-learned.md#f-003-cuda-vmm--300-regression) |
 | **MCP Proxy** | All tool calls via `:8070` (Default Deny policy). | [Security](docs/security/overview.md) |
 | **Health Checks** | Use `wget`/`python urllib` NOT `curl` in Docker. | [§5 F-021](docs/architecture/lessons-learned.md#f-021-health-checks) |
+| **Mandatory Sync** | Before ANY "done" claim: `sentinel-doc-sync` + `brv curate`. | [Post-Session Protocol](#post-session-protocol-mandatory) |
 
 ---
 
